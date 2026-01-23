@@ -579,6 +579,40 @@ const Practice = {
     },
 
     /**
+     * 입력 언어 감지 및 경고 표시
+     */
+    checkInputLanguage(char) {
+        const { language } = this.state;
+        const isKoreanChar = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(char);
+        const isEnglishChar = /[a-zA-Z]/.test(char);
+
+        if (!isKoreanChar && !isEnglishChar) return;
+
+        if (language === 'korean' && isEnglishChar) {
+            this.showLanguageWarning('한/영 키를 눌러 한글로 변경해주세요!');
+        } else if (language === 'english' && isKoreanChar) {
+            this.showLanguageWarning('한/영 키를 눌러 영어로 변경해주세요!');
+        } else {
+            this.hideLanguageWarning();
+        }
+    },
+
+    showLanguageWarning(msg) {
+        const warning = document.getElementById('languageWarning');
+        if (warning) {
+            warning.textContent = msg;
+            warning.classList.remove('hidden');
+        }
+    },
+
+    hideLanguageWarning() {
+        const warning = document.getElementById('languageWarning');
+        if (warning) {
+            warning.classList.add('hidden');
+        }
+    },
+
+    /**
      * 단어 연습 데이터 로드 (JSON)
      */
     async loadWordData(language, level) {
@@ -589,6 +623,7 @@ const Practice = {
             case 'home': key = 'home'; break;
             case 'home-top': key = 'upper'; break;
             case 'home-bottom': key = 'lower'; break;
+            case 'coding': key = 'coding'; break;
             default: key = 'all'; break;
         }
 
@@ -833,6 +868,13 @@ const Practice = {
 
         const input = e.target;
         const inputValue = input.value;
+
+        // 언어 감지 및 경고
+        if (inputValue.length > 0) {
+            this.checkInputLanguage(inputValue[inputValue.length - 1]);
+        } else {
+            this.hideLanguageWarning();
+        }
 
         // 첫 입력 시 타이머 시작
         if (!this.state.timerStarted && inputValue.length > 0) {

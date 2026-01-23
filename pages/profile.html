@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="../src/css/style.css">
+    <link rel="stylesheet" href="../css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* 프로필 페이지 추가 스타일 */
@@ -216,13 +216,13 @@
     <!-- 네비게이션 -->
     <nav class="navbar">
         <div class="nav-container">
-            <a href="../src/index.html" class="nav-logo">
+            <a href="../index.html" class="nav-logo">
                 <span class="logo-icon">⌨️</span>
                 <span class="logo-text">타자 연습</span>
             </a>
             <ul class="nav-menu">
                 <li class="nav-item">
-                    <a href="../src/index.html" class="nav-link">연습하기</a>
+                    <a href="../index.html" class="nav-link">연습하기</a>
                 </li>
                 <li class="nav-item">
                     <a href="profile.html" class="nav-link active">내 프로필</a>
@@ -242,7 +242,7 @@
             <h2>로그인이 필요합니다</h2>
             <p>프로필을 확인하려면 로그인해 주세요.</p>
             <br>
-            <a href="../src/index.html" class="btn btn-primary">메인으로 돌아가기</a>
+            <a href="../index.html" class="btn btn-primary">메인으로 돌아가기</a>
         </div>
 
         <!-- 프로필 컨텐츠 -->
@@ -319,7 +319,7 @@
                     <div class="icon">📝</div>
                     <p>아직 연습 기록이 없습니다.</p>
                     <br>
-                    <a href="../src/index.html" class="btn btn-primary">연습 시작하기</a>
+                    <a href="../index.html" class="btn btn-primary">연습 시작하기</a>
                 </div>
             </div>
         </div>
@@ -332,7 +332,7 @@
         </div>
     </footer>
 
-    <script src="../src/js/storage.js"></script>
+    <script src="../js/storage.js"></script>
     <script>
         // 프로필 페이지 스크립트
         document.addEventListener('DOMContentLoaded', () => {
@@ -374,14 +374,14 @@
                 `;
             } else {
                 navAuth.innerHTML = `
-                    <a href="../src/index.html" class="btn btn-primary">로그인</a>
+                    <a href="../index.html" class="btn btn-primary">로그인</a>
                 `;
             }
         }
 
         function handleLogout() {
             Storage.logout();
-            window.location.href = '../src/index.html';
+            window.location.href = '../index.html';
         }
 
         function loadUserProfile(user) {

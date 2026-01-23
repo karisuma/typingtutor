@@ -1,0 +1,31 @@
+{
+    "rewrites": [
+        {
+            "source": "/admin",
+            "destination": "/admin/index.html"
+        },
+        {
+            "source": "/admin/",
+            "destination": "/admin/index.html"
+        },
+        {
+            "source": "/profile",
+            "destination": "/pages/profile.html"
+        },
+        {
+            "source": "/profile/",
+            "destination": "/pages/profile.html"
+        }
+    ],
+    "headers": [
+        {
+            "source": "/(.*)",
+            "headers": [
+                {
+                    "key": "Cache-Control",
+                    "value": "public, max-age=0, must-revalidate"
+                }
+            ]
+        }
+    ]
+}

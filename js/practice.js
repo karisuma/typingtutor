@@ -1163,6 +1163,7 @@ const Practice = {
         const accuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
 
         // 결과 저장
+        // 결과 저장 (비동기)
         Storage.addRecord({
             mode,
             language,
@@ -1172,6 +1173,10 @@ const Practice = {
             correctChars,
             speed,
             accuracy
+        }).then(result => {
+            console.log('Record saved:', result);
+        }).catch(err => {
+            console.error('Failed to save record:', err);
         });
 
         // 결과 모달 표시

@@ -7,4 +7,4 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbyroJ9z_objPSsdPBRP0XB5l9LfMzUSdHTWrnhbYpC0pBqT2DL-BcAiFUyDjxthAfPW/exec';
 
 // API 사용 여부 (false면 localStorage 사용)
-const USE_API = false;  // 설정 완료 후 true로 변경
+const USE_API = true;  // 설정 완료 후 true로 변경

@@ -107,6 +107,21 @@ const Keyboard = {
             'ㅟ': ['n', 'l'],  // ㅜ + ㅣ
             'ㅢ': ['m', 'l']   // ㅡ + ㅣ
         };
+
+        // 이중받침(겹받침) 매핑 - 입력 순서대로 분해
+        this.complexJongsungMap = {
+            'ㄳ': ['ㄱ', 'ㅅ'],  // ㄱ + ㅅ
+            'ㄵ': ['ㄴ', 'ㅈ'],  // ㄴ + ㅈ
+            'ㄶ': ['ㄴ', 'ㅎ'],  // ㄴ + ㅎ
+            'ㄺ': ['ㄹ', 'ㄱ'],  // ㄹ + ㄱ
+            'ㄻ': ['ㄹ', 'ㅁ'],  // ㄹ + ㅁ
+            'ㄼ': ['ㄹ', 'ㅂ'],  // ㄹ + ㅂ
+            'ㄽ': ['ㄹ', 'ㅅ'],  // ㄹ + ㅅ
+            'ㄾ': ['ㄹ', 'ㅌ'],  // ㄹ + ㅌ
+            'ㄿ': ['ㄹ', 'ㅍ'],  // ㄹ + ㅍ
+            'ㅀ': ['ㄹ', 'ㅎ'],  // ㄹ + ㅎ
+            'ㅄ': ['ㅂ', 'ㅅ']   // ㅂ + ㅅ
+        };
     },
 
     /**
@@ -190,7 +205,7 @@ const Keyboard = {
         const decomposed = this.decomposeKorean(char);
         if (!decomposed) return [];
 
-        // 자소 시퀀스 생성 (복합 모음 풀어서)
+        // 자소 시퀀스 생성 (복합 모음 및 이중받침 풀어서)
         const sequence = [];
         for (const jamo of decomposed) {
             if (this.complexVowelMap && this.complexVowelMap[jamo]) {
@@ -198,6 +213,12 @@ const Keyboard = {
                 const keys = this.complexVowelMap[jamo];
                 for (const k of keys) {
                     sequence.push(this.koreanMap[k]);
+                }
+            } else if (this.complexJongsungMap && this.complexJongsungMap[jamo]) {
+                // 이중받침(겹받침) 분해
+                const jamos = this.complexJongsungMap[jamo];
+                for (const j of jamos) {
+                    sequence.push(j);
                 }
             } else {
                 sequence.push(jamo);

@@ -208,27 +208,45 @@ const App = {
     /**
      * 로그인 처리
      */
-    handleLogin() {
+    async handleLogin() {
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
 
-        const result = Storage.login(email, password);
+        // 로딩 상태 표시 (선택 사항)
+        const loginBtn = document.querySelector('#loginForm button[type="submit"]');
+        const originalText = loginBtn ? loginBtn.textContent : '로그인';
+        if (loginBtn) {
+            loginBtn.textContent = '로그인 중...';
+            loginBtn.disabled = true;
+        }
 
-        if (result.success) {
-            this.state.isLoggedIn = true;
-            this.state.currentUser = result.user;
-            this.updateAuthUI();
-            this.hideModal('loginModal');
-            this.showNotification('로그인되었습니다.', 'success');
-        } else {
-            this.showNotification(result.message, 'error');
+        try {
+            const result = await Storage.login(email, password);
+
+            if (result.success) {
+                this.state.isLoggedIn = true;
+                this.state.currentUser = result.user;
+                this.updateAuthUI();
+                this.hideModal('loginModal');
+                this.showNotification('로그인되었습니다.', 'success');
+            } else {
+                this.showNotification(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Login Error:', error);
+            this.showNotification('로그인 중 오류가 발생했습니다.', 'error');
+        } finally {
+            if (loginBtn) {
+                loginBtn.textContent = originalText;
+                loginBtn.disabled = false;
+            }
         }
     },
 
     /**
      * 회원가입 처리
      */
-    handleSignup() {
+    async handleSignup() {
         const name = document.getElementById('signupName').value;
         const email = document.getElementById('signupEmail').value;
         const password = document.getElementById('signupPassword').value;
@@ -245,21 +263,38 @@ const App = {
             return;
         }
 
-        const result = Storage.createUser({ name, email, password, role: 'student' });
+        const signupBtn = document.querySelector('#signupForm button[type="submit"]');
+        const originalText = signupBtn ? signupBtn.textContent : '가입하기';
+        if (signupBtn) {
+            signupBtn.textContent = '가입 중...';
+            signupBtn.disabled = true;
+        }
 
-        if (result.success) {
-            // 자동 로그인
-            const loginResult = Storage.login(email, password);
-            if (loginResult.success) {
-                this.state.isLoggedIn = true;
-                this.state.currentUser = loginResult.user;
-                this.updateAuthUI();
+        try {
+            const result = await Storage.createUser({ name, email, password, role: 'student' });
+
+            if (result.success) {
+                // 자동 로그인
+                const loginResult = await Storage.login(email, password);
+                if (loginResult.success) {
+                    this.state.isLoggedIn = true;
+                    this.state.currentUser = loginResult.user;
+                    this.updateAuthUI();
+                }
+
+                this.hideModal('signupModal');
+                this.showNotification('회원가입이 완료되었습니다.', 'success');
+            } else {
+                this.showNotification(result.message, 'error');
             }
-
-            this.hideModal('signupModal');
-            this.showNotification('회원가입이 완료되었습니다.', 'success');
-        } else {
-            this.showNotification(result.message, 'error');
+        } catch (error) {
+            console.error('Signup Error:', error);
+            this.showNotification('가입 중 오류가 발생했습니다.', 'error');
+        } finally {
+            if (signupBtn) {
+                signupBtn.textContent = originalText;
+                signupBtn.disabled = false;
+            }
         }
     },
 

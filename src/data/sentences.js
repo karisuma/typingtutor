@@ -1,0 +1,112 @@
+const SENTENCES = {
+    "korean": [
+        // 속담
+        "가는 말이 고와야 오는 말이 곱다.",
+        "천 리 길도 한 걸음부터.",
+        "삶이 있는 한 희망은 있다.",
+        "실패는 성공의 어머니이다.",
+        "일찍 일어나는 새가 벌레를 잡는다.",
+        "웃는 얼굴에 침 뱉으랴.",
+        "호랑이도 제 말 하면 온다.",
+        "시간은 금이다.",
+        "독서보다 더 좋은 친구는 없다.",
+        "건강한 신체에 건전한 정신이 깃든다.",
+        "꿈을 꾸는 자만이 꿈을 이룰 수 있다.",
+        "오늘 걷지 않으면 내일은 뛰어야 한다.",
+        "시작이 반이다.",
+        "아는 것이 힘이다.",
+        "연습만이 살 길이다.",
+
+        // 명언
+        "오직 자신의 꿈을 좇는 자만이 진정한 리더가 될 수 있다.",
+        "인생에서 가장 큰 영광은 넘어지지 않는 것이 아니라 넘어질 때마다 일어서는 것이다.",
+        "어제는 역사이고, 내일은 미스터리이며, 오늘은 선물이다.",
+        "나는 생각한다, 고로 나는 존재한다.",
+        "진정한 용기란 두려움이 없는 것이 아니라 두려움을 극복하는 것이다.",
+        "나를 죽이지 못하는 고통은 나를 더 강하게 만든다.",
+        "성공은 열정을 잃지 않고 실패를 거듭하는 것이다.",
+        "행복은 목적지가 아니라 여행 그 자체이다.",
+        "변화를 원한다면 스스로가 그 변화가 되어라.",
+
+        // 영화 대사
+        "삶은 초콜릿 상자와 같다. 무엇이 나올지 모른다.",
+        "지금 당장 열심히 살지 않으면 열심히 죽게 될 거야.",
+        "내일은 내일의 태양이 뜬다.",
+        "모든 것은 불가능해 보인다. 그것이 이루어지기 전까지는.",
+        "두려움은 마음이 만들어낸 감옥이다.",
+        "희망은 좋은 것이야. 어쩌면 가장 좋은 것일지도 몰라.",
+        "내가 누구인지 말해줄 수 있는 건 오직 나뿐이야.",
+        "포기하지 마. 기적은 매일 일어나.",
+
+        // 자바스크립트 기본 문법 설명
+        "자바스크립트에서 변수를 선언할 때는 let, const, var 키워드를 사용합니다.",
+        "const는 값을 재할당할 수 없는 상수를 선언할 때 사용합니다.",
+        "let은 블록 스코프 변수를 선언할 때 사용합니다.",
+        "함수는 function 키워드 또는 화살표 함수로 정의할 수 있습니다.",
+        "조건문은 if, else if, else 키워드로 작성합니다.",
+        "for 반복문은 배열이나 객체를 순회할 때 자주 사용됩니다.",
+        "배열은 대괄호로 감싸고, 객체는 중괄호로 감쌉니다.",
+        "문자열은 작은따옴표, 큰따옴표, 또는 백틱으로 감쌉니다.",
+        "템플릿 리터럴을 사용하면 변수를 문자열에 쉽게 삽입할 수 있습니다.",
+        "콘솔에 출력하려면 console.log() 함수를 사용합니다."
+    ],
+    "english": [
+        // Proverbs
+        "Time is gold.",
+        "No pain, no gain.",
+        "Practice makes perfect.",
+        "Where there is a will, there is a way.",
+        "A friend in need is a friend indeed.",
+        "Better late than never.",
+        "Knowledge is power.",
+        "Life is a journey, not a destination.",
+        "Keep your eyes on the stars and your feet on the ground.",
+        "Believe you can and you're halfway there.",
+        "In the middle of difficulty lies opportunity.",
+        "Success is not final, failure is not fatal.",
+        "The early bird catches the worm.",
+        "To be or not to be, that is the question.",
+        "Slow and steady wins the race.",
+
+        // Famous quotes
+        "The only way to do great work is to love what you do.",
+        "In three words I can sum up everything I've learned about life: it goes on.",
+        "Be the change that you wish to see in the world.",
+        "The greatest glory in living lies not in never falling, but in rising every time we fall.",
+        "It is during our darkest moments that we must focus to see the light.",
+        "The purpose of our lives is to be happy.",
+        "Life is what happens when you're busy making other plans.",
+        "You only live once, but if you do it right, once is enough.",
+        "Many of life's failures are people who did not realize how close they were to success.",
+        "If you want to live a happy life, tie it to a goal, not to people or things.",
+
+        // Movie quotes
+        "Life is like a box of chocolates. You never know what you're gonna get.",
+        "May the Force be with you.",
+        "There's no place like home.",
+        "I'll be back.",
+        "After all, tomorrow is another day!",
+        "Just keep swimming.",
+        "To infinity and beyond!",
+        "Here's looking at you, kid.",
+        "You can't handle the truth!",
+        "Why so serious?",
+        "I'm the king of the world!",
+        "Houston, we have a problem.",
+        "My mama always said life was like a box of chocolates.",
+        "Get busy living or get busy dying.",
+        "Hope is a good thing, maybe the best of things.",
+
+        // JavaScript explanations
+        "In JavaScript, we use let, const, or var to declare variables.",
+        "The const keyword declares a constant that cannot be reassigned.",
+        "Functions can be defined using the function keyword or arrow syntax.",
+        "Arrow functions provide a shorter syntax using the => operator.",
+        "Conditional statements use if, else if, and else keywords.",
+        "The for loop is commonly used to iterate over arrays.",
+        "Arrays are created using square brackets, objects use curly braces.",
+        "Template literals use backticks and allow embedded expressions.",
+        "The console.log() function outputs messages to the console.",
+        "JavaScript is a dynamically typed programming language."
+    ]
+};

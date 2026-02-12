@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="타자 연습 프로그램 - 내 프로필">
+    <title>내 프로필 | 타자 연습</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="icon" type="image/png" href="../assets/typing_64.png">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* 프로필 페이지 추가 스타일 */
+        .profile-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: calc(80px + var(--spacing-2xl)) var(--spacing-xl) var(--spacing-2xl);
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xl);
+            margin-bottom: var(--spacing-2xl);
+            padding: var(--spacing-xl);
+            background: var(--color-bg-card);
+            border-radius: var(--radius-xl);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: var(--radius-full);
+            background: var(--color-accent-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--font-size-4xl);
+            font-weight: 700;
+            color: white;
+        }
+
+        .profile-info h1 {
+            font-size: var(--font-size-2xl);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .profile-info p {
+            color: var(--color-text-secondary);
+        }
+
+        .profile-badge {
+            display: inline-block;
+            padding: var(--spacing-xs) var(--spacing-md);
+            background: rgba(99, 102, 241, 0.2);
+            color: var(--color-accent-primary);
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            margin-top: var(--spacing-sm);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .stat-card {
+            background: var(--color-bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            text-align: center;
+        }
+
+        .stat-card .icon {
+            font-size: 2rem;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .stat-card .value {
+            font-size: var(--font-size-3xl);
+            font-weight: 700;
+            color: var(--color-accent-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .stat-card .label {
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-sm);
+        }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: var(--spacing-xl);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .chart-card {
+            background: var(--color-bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-xl);
+        }
+
+        .chart-card h3 {
+            font-size: var(--font-size-lg);
+            margin-bottom: var(--spacing-lg);
+            color: var(--color-text-primary);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+        }
+
+        .records-section {
+            background: var(--color-bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-xl);
+        }
+
+        .records-section h3 {
+            font-size: var(--font-size-lg);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .records-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .records-table th,
+        .records-table td {
+            padding: var(--spacing-md);
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .records-table th {
+            color: var(--color-text-muted);
+            font-weight: 500;
+            font-size: var(--font-size-sm);
+        }
+
+        .records-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .mode-badge {
+            display: inline-block;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: 500;
+        }
+
+        .mode-badge.position {
+            background: rgba(99, 102, 241, 0.2);
+            color: #818cf8;
+        }
+
+        .mode-badge.word {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+
+        .mode-badge.sentence {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .mode-badge.longtext {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-3xl);
+            color: var(--color-text-muted);
+        }
+
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        @media (max-width: 768px) {
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+
+            .records-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 네비게이션 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo">
+                <span class="logo-icon">⌨️</span>
+                <span class="logo-text">타자 연습</span>
+            </a>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="../index.html" class="nav-link">연습하기</a>
+                </li>
+                <li class="nav-item">
+                    <a href="profile.html" class="nav-link active">내 프로필</a>
+                </li>
+            </ul>
+            <div class="nav-auth" id="navAuth">
+                <!-- 동적으로 채워짐 -->
+            </div>
+        </div>
+    </nav>
+
+    <!-- 메인 컨텐츠 -->
+    <main class="profile-container">
+        <!-- 로그인 필요 메시지 -->
+        <div class="empty-state hidden" id="loginRequired">
+            <div class="icon">🔐</div>
+            <h2>로그인이 필요합니다</h2>
+            <p>프로필을 확인하려면 로그인해 주세요.</p>
+            <br>
+            <a href="../index.html" class="btn btn-primary">메인으로 돌아가기</a>
+        </div>
+
+        <!-- 프로필 컨텐츠 -->
+        <div id="profileContent" class="hidden">
+            <!-- 프로필 헤더 -->
+            <div class="profile-header">
+                <div class="profile-avatar" id="userAvatar">U</div>
+                <div class="profile-info">
+                    <h1 id="userName">사용자</h1>
+                    <p id="userEmail">user@example.com</p>
+                    <span class="profile-badge" id="userRole">학생</span>
+                </div>
+            </div>
+
+            <!-- 통계 요약 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="icon">📊</div>
+                    <div class="value" id="statPracticeCount">0</div>
+                    <div class="label">총 연습 횟수</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon">⏱️</div>
+                    <div class="value" id="statTotalTime">0분</div>
+                    <div class="label">총 연습 시간</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon">⚡</div>
+                    <div class="value" id="statAvgSpeed">0</div>
+                    <div class="label">평균 타수 (타/분)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon">🎯</div>
+                    <div class="value" id="statAvgAccuracy">0%</div>
+                    <div class="label">평균 정확도</div>
+                </div>
+            </div>
+
+            <!-- 차트 섹션 -->
+            <div class="charts-section">
+                <div class="chart-card">
+                    <h3>📈 타수 성장 추이</h3>
+                    <div class="chart-container">
+                        <canvas id="speedChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>🎯 정확도 추이</h3>
+                    <div class="chart-container">
+                        <canvas id="accuracyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 최근 연습 기록 -->
+            <div class="records-section">
+                <h3>📋 최근 연습 기록</h3>
+                <table class="records-table">
+                    <thead>
+                        <tr>
+                            <th>날짜</th>
+                            <th>모드</th>
+                            <th>언어</th>
+                            <th>시간</th>
+                            <th>타수</th>
+                            <th>정확도</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsBody">
+                        <!-- 동적으로 채워짐 -->
+                    </tbody>
+                </table>
+                <div class="empty-state hidden" id="noRecords">
+                    <div class="icon">📝</div>
+                    <p>아직 연습 기록이 없습니다.</p>
+                    <br>
+                    <a href="../index.html" class="btn btn-primary">연습 시작하기</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2026 타자 연습 프로그램. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/api-config.js"></script>
+    <script src="../js/api-client.js"></script>
+    <script src="../js/storage.js"></script>
+    <script>
+        // 프로필 페이지 스크립트
+        document.addEventListener('DOMContentLoaded', () => {
+            initProfilePage();
+        });
+
+        async function initProfilePage() {
+            // Storage 초기화 대기 (API 연결 등)
+            await Storage.init();
+
+            const user = Storage.getCurrentUser();
+
+            if (!user) {
+                // 로그인 안 됨
+                document.getElementById('loginRequired').classList.remove('hidden');
+                document.getElementById('profileContent').classList.add('hidden');
+                updateNavAuth(null);
+                return;
+            }
+
+            // 로그인 됨
+            document.getElementById('loginRequired').classList.add('hidden');
+            document.getElementById('profileContent').classList.remove('hidden');
+
+            updateNavAuth(user);
+            loadUserProfile(user);
+
+            // 데이터 로딩 중 표시 (선택 사항)
+            document.getElementById('recordsBody').innerHTML = '<tr><td colspan="6" style="text-align:center;">데이터를 불러오는 중입니다...</td></tr>';
+
+            try {
+                // API 또는 로컬에서 기록 조회
+                const records = await Storage.getRecordsByUser(user.id);
+
+                loadUserStats(records);
+                loadGrowthCharts(records);
+                loadRecentRecords(records);
+            } catch (error) {
+                console.error('Failed to load records:', error);
+                document.getElementById('recordsBody').innerHTML = '<tr><td colspan="6" style="text-align:center; color: #ef4444;">데이터 로드 실패</td></tr>';
+            }
+        }
+
+        function updateNavAuth(user) {
+            const navAuth = document.getElementById('navAuth');
+            if (!navAuth) return;
+
+            if (user) {
+                const isAdmin = user.role === 'admin';
+                navAuth.innerHTML = `
+                    <span style="color: var(--color-accent-primary); font-weight: 500;">${user.name}님</span>
+                    ${isAdmin ? '<a href="../admin/index.html" class="btn btn-ghost">관리자</a>' : ''}
+                    <button class="btn btn-ghost" onclick="handleLogout()">로그아웃</button>
+                `;
+            } else {
+                navAuth.innerHTML = `
+                    <a href="../index.html" class="btn btn-primary">로그인</a>
+                `;
+            }
+        }
+
+        function handleLogout() {
+            Storage.logout();
+            window.location.href = '../index.html';
+        }
+
+        function loadUserProfile(user) {
+            document.getElementById('userAvatar').textContent = user.name.charAt(0).toUpperCase();
+            document.getElementById('userName').textContent = user.name;
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('userRole').textContent = user.role === 'admin' ? '관리자' : '학생';
+        }
+
+        function loadUserStats(records) {
+            const practiceCount = records.length;
+            const totalTime = records.reduce((sum, r) => sum + (r.duration || 0), 0);
+            const avgSpeed = practiceCount > 0
+                ? Math.round(records.reduce((sum, r) => sum + r.speed, 0) / practiceCount)
+                : 0;
+            const avgAccuracy = practiceCount > 0
+                ? Math.round(records.reduce((sum, r) => sum + r.accuracy, 0) / practiceCount)
+                : 0;
+
+            document.getElementById('statPracticeCount').textContent = practiceCount;
+            document.getElementById('statTotalTime').textContent = Math.round(totalTime / 60) + '분';
+            document.getElementById('statAvgSpeed').textContent = avgSpeed;
+            document.getElementById('statAvgAccuracy').textContent = avgAccuracy + '%';
+        }
+
+        function loadGrowthCharts(records) {
+            // records를 기반으로 growthData 계산 (Storage.getGrowthData 대신 직접 계산하여 API 호출 절약)
+            const days = 14;
+            const now = new Date();
+            const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+
+            const dailyData = {};
+
+            records.forEach(record => {
+                const date = new Date(record.createdAt);
+                if (date >= startDate) {
+                    const dateKey = date.toISOString().split('T')[0];
+                    if (!dailyData[dateKey]) {
+                        dailyData[dateKey] = {
+                            date: dateKey,
+                            speed: [],
+                            accuracy: [],
+                            count: 0
+                        };
+                    }
+                    dailyData[dateKey].speed.push(record.speed);
+                    dailyData[dateKey].accuracy.push(record.accuracy);
+                    dailyData[dateKey].count++;
+                }
+            });
+
+            const growthData = Object.values(dailyData).map(day => ({
+                date: day.date,
+                avgSpeed: Math.round(day.speed.reduce((a, b) => a + b, 0) / day.speed.length),
+                avgAccuracy: Math.round(day.accuracy.reduce((a, b) => a + b, 0) / day.accuracy.length),
+                practiceCount: day.count
+            })).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            if (growthData.length === 0) {
+                return;
+            }
+
+            const labels = growthData.map(d => {
+                const date = new Date(d.date);
+                return `${date.getMonth() + 1}/${date.getDate()}`;
+            });
+
+            const speedData = growthData.map(d => d.avgSpeed);
+            const accuracyData = growthData.map(d => d.avgAccuracy);
+
+            // 차트 렌더링 (기존 코드 유지)
+            // 타수 차트
+            const speedCtx = document.getElementById('speedChart').getContext('2d');
+            new Chart(speedCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '타수 (타/분)',
+                        data: speedData,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#6a6a80' } },
+                        x: { grid: { display: false }, ticks: { color: '#6a6a80' } }
+                    }
+                }
+            });
+
+            // 정확도 차트
+            const accuracyCtx = document.getElementById('accuracyChart').getContext('2d');
+            new Chart(accuracyCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '정확도 (%)',
+                        data: accuracyData,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#6a6a80' } },
+                        x: { grid: { display: false }, ticks: { color: '#6a6a80' } }
+                    }
+                }
+            });
+        }
+
+        function loadRecentRecords(records) {
+            const tbody = document.getElementById('recordsBody');
+            const noRecords = document.getElementById('noRecords');
+
+            if (records.length === 0) {
+                noRecords.classList.remove('hidden');
+                tbody.innerHTML = '';
+                return;
+            }
+
+            noRecords.classList.add('hidden');
+
+            const recentRecords = records.slice(-20).reverse();
+
+            const modeNames = {
+                'position': '자리연습',
+                'word': '단어연습',
+                'sentence': '문장연습',
+                'longtext': '장문연습'
+            };
+
+            const languageNames = {
+                'korean': '한글',
+                'english': '영어'
+            };
+
+            tbody.innerHTML = recentRecords.map(record => {
+                const date = new Date(record.createdAt);
+                const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                const timeStr = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+
+                const duration = record.duration || 0;
+                const mins = Math.floor(duration / 60);
+                const secs = duration % 60;
+                const durationStr = `${mins}분 ${secs}초`;
+
+                return `
+                    <tr>
+                        <td>${dateStr} ${timeStr}</td>
+                        <td><span class="mode-badge ${record.mode}">${modeNames[record.mode] || record.mode}</span></td>
+                        <td>${languageNames[record.language] || record.language}</td>
+                        <td>${durationStr}</td>
+                        <td>${record.speed} 타/분</td>
+                        <td>${record.accuracy}%</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    </script>
+</body>
+
+</html>

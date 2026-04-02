@@ -1135,46 +1135,104 @@ a:hover {
 }
 
 /* ========================================
-   영어 단어 연습 모드 특별 스타일 (베껴쓰기 느낌)
+   영어 단어 연습 모드 특별 스타일 (열 맞춤 2행 구조)
    ======================================== */
 .typing-area.english-word-mode {
-    padding-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-lg);
 }
 
-.typing-area.english-word-mode .words-container {
-    font-size: 2.2rem;
-    letter-spacing: -0.02em;
-    margin-bottom: 0;
-    padding-bottom: 0;
-    max-height: 6rem;
+/* input을 시각적으로 숨기되 포커스 유지 */
+.typing-area.english-word-mode .typing-input {
+    position: absolute;
+    opacity: 0;
+    height: 0;
+    width: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
     overflow: hidden;
 }
 
-.typing-area.english-word-mode .words-container .char {
+/* 2행 열 맞춤 컨테이너 */
+.typing-area.english-word-mode .words-container.english-dual-row {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 0;
+    font-size: 2rem;
+    letter-spacing: 0;
+    max-height: none;
+    overflow: visible;
+    margin: 0 auto;
+}
+
+/* 각 글자 컬럼 (타겟 + 입력이 세로로 쌓임) */
+.english-dual-row .char-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* 타겟 글자 & 입력 글자 공통 */
+.english-dual-row .target-char,
+.english-dual-row .typed-char {
+    display: block;
+    text-align: center;
     padding: 2px 1px;
+    font-size: 2rem;
+    font-weight: 500;
+    line-height: 1.4;
+    min-width: 0.7em;
 }
 
-/* 단어 사이 공백은 약간의 간격만 */
-.typing-area.english-word-mode .words-container .char-space {
-    width: 0.5em;
+/* 타겟 글자 기본 */
+.english-dual-row .target-char {
+    color: var(--color-text-primary);
 }
 
-.typing-area.english-word-mode .typing-input {
-    font-size: 2.2rem;
-    font-family: var(--font-family);
-    letter-spacing: -0.02em;
-    background: transparent;
-    border: none;
-    border-top: 2px dashed rgba(99, 102, 241, 0.3);
-    box-shadow: none;
-    color: var(--color-text-secondary);
-    margin-top: 4px;
-    padding-top: 8px;
-    line-height: 1;
-    max-width: 100%;
+/* 현재 입력해야 할 글자 */
+.english-dual-row .target-char.current {
+    background: rgba(99, 102, 241, 0.25);
+    color: var(--color-accent-primary);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+    font-weight: 700;
 }
 
-.typing-area.english-word-mode .typing-input:focus {
-    box-shadow: none;
-    border-top: 2px dashed rgba(99, 102, 241, 0.5);
+/* 이미 지나간 타겟 글자 (흐리게) */
+.english-dual-row .target-char.done {
+    color: var(--color-text-muted);
+    opacity: 0.6;
+}
+
+/* 입력 글자 기본 */
+.english-dual-row .typed-char {
+    color: var(--color-text-muted);
+    min-height: 1.4em;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 입력 맞음 */
+.english-dual-row .typed-char.correct {
+    color: var(--color-success);
+    font-weight: 600;
+}
+
+/* 입력 틀림 */
+.english-dual-row .typed-char.incorrect {
+    color: var(--color-error);
+    background: rgba(239, 68, 68, 0.15);
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+}
+
+/* 커서 위치 표시 */
+.english-dual-row .typed-char.cursor {
+    border-bottom: 2px solid var(--color-accent-primary);
+    animation: cursorBlink 1s ease-in-out infinite;
+}
+
+@keyframes cursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
 }

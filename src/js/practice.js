@@ -295,6 +295,15 @@ const Practice = {
             this.handleInput(e);
         });
 
+        // 타이핑 영역 클릭 시 입력 필드에 포커스 (영어 단어 모드에서 input이 숨겨져 있으므로)
+        const typingArea = document.querySelector('.typing-area');
+        if (typingArea) {
+            typingArea.addEventListener('click', () => {
+                const inp = document.getElementById('typingInput');
+                if (inp) inp.focus();
+            });
+        }
+
         // 키다운 (자소 하이라이트 및 특수 키 처리)
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -817,37 +826,84 @@ const Practice = {
             // 단어 연습: 세트 정보 표시
             const wp = this.state.wordPractice;
 
-            // 세트 진행 정보 표시
+            // 세트 진행 정보 (별도 행)
             const setInfo = document.createElement('div');
             setInfo.className = 'set-info';
             setInfo.innerHTML = `<span class="set-badge">세트 ${wp.currentSet + 1}/${wp.totalSets}</span> <span class="word-count">(${wp.completedWords}/50 단어)</span>`;
             container.appendChild(setInfo);
 
-            // 현재 세트의 단어들 표시
-            const wordsContainer = document.createElement('div');
-            wordsContainer.className = 'words-container';
-
             const fullText = targetText.join(' ');
-            fullText.split('').forEach((char, index) => {
-                const span = document.createElement('span');
-                span.className = 'char';
-                span.textContent = char === ' ' ? '\u00A0' : char;
 
-                if (index === currentIndex) {
-                    span.classList.add('current');
-                } else if (index < currentIndex) {
-                    const typedChar = this.state.typedText[index];
-                    if (typedChar === char) {
-                        span.classList.add('correct');
-                    } else {
-                        span.classList.add('incorrect');
+            if (this.state.language === 'english') {
+                // 영어 단어 모드: 타겟 행 + 입력 행 열 맞춤 구조
+                const wordsContainer = document.createElement('div');
+                wordsContainer.className = 'words-container english-dual-row';
+
+                fullText.split('').forEach((char, index) => {
+                    const column = document.createElement('div');
+                    column.className = 'char-column';
+
+                    // 타겟 글자 (윗줄)
+                    const targetSpan = document.createElement('span');
+                    targetSpan.className = 'target-char';
+                    targetSpan.textContent = char === ' ' ? '\u00A0' : char;
+                    if (index === currentIndex) {
+                        targetSpan.classList.add('current');
+                    } else if (index < currentIndex) {
+                        targetSpan.classList.add('done');
                     }
-                }
+                    column.appendChild(targetSpan);
 
-                wordsContainer.appendChild(span);
-            });
+                    // 입력된 글자 (아랫줄 - 타겟 바로 아래 동일 위치)
+                    const typedSpan = document.createElement('span');
+                    typedSpan.className = 'typed-char';
+                    if (index < this.state.typedText.length) {
+                        const typedChar = this.state.typedText[index];
+                        typedSpan.textContent = typedChar === ' ' ? '\u00A0' : typedChar;
+                        if (typedChar === char) {
+                            typedSpan.classList.add('correct');
+                        } else {
+                            typedSpan.classList.add('incorrect');
+                        }
+                    } else if (index === currentIndex) {
+                        // 커서 위치 표시
+                        typedSpan.classList.add('cursor');
+                        typedSpan.innerHTML = '&nbsp;';
+                    } else {
+                        typedSpan.innerHTML = '&nbsp;';
+                    }
+                    column.appendChild(typedSpan);
 
-            container.appendChild(wordsContainer);
+                    wordsContainer.appendChild(column);
+                });
+
+                container.appendChild(wordsContainer);
+            } else {
+                // 한글 단어 모드: 기존 방식
+                const wordsContainer = document.createElement('div');
+                wordsContainer.className = 'words-container';
+
+                fullText.split('').forEach((char, index) => {
+                    const span = document.createElement('span');
+                    span.className = 'char';
+                    span.textContent = char === ' ' ? '\u00A0' : char;
+
+                    if (index === currentIndex) {
+                        span.classList.add('current');
+                    } else if (index < currentIndex) {
+                        const typedChar = this.state.typedText[index];
+                        if (typedChar === char) {
+                            span.classList.add('correct');
+                        } else {
+                            span.classList.add('incorrect');
+                        }
+                    }
+
+                    wordsContainer.appendChild(span);
+                });
+
+                container.appendChild(wordsContainer);
+            }
         } else {
             // 문장/장문: 전체 텍스트를 문자 단위로 표시
             const fullText = targetText.join(' ');

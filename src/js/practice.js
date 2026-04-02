@@ -405,6 +405,16 @@ const Practice = {
         // 키보드 언어 설정
         Keyboard.setLanguage(language);
 
+        // 영어 단어 연습 모드 클래스 적용
+        const typingArea = document.querySelector('.typing-area');
+        if (typingArea) {
+            if (language === 'english' && mode === 'word') {
+                typingArea.classList.add('english-word-mode');
+            } else {
+                typingArea.classList.remove('english-word-mode');
+            }
+        }
+
         // 상태 초기화
         this.state.currentIndex = 0;
         this.state.typedText = '';
@@ -526,10 +536,10 @@ const Practice = {
         const { language, level } = this.state;
         const words = await this.loadWordData(language, level);
 
-        // 100개 단어 선택
+        // 50개 단어 선택 (5단어 x 10세트)
         const allWords = [];
         if (words && words.length > 0) {
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < 50; i++) {
                 const randomWord = words[Math.floor(Math.random() * words.length)];
                 allWords.push(randomWord);
             }
@@ -540,7 +550,7 @@ const Practice = {
         this.state.wordPractice = {
             allWords: allWords,
             currentSet: 0,
-            totalSets: 20,
+            totalSets: 10,
             wordsPerSet: 5,
             currentWordIndex: 0,
             completedWords: 0,
@@ -631,7 +641,11 @@ const Practice = {
             if (language === 'korean') {
                 if (typeof KOREAN_WORDS !== 'undefined') return KOREAN_WORDS[key] || [];
             } else {
-                if (typeof ENGLISH_WORDS !== 'undefined') return ENGLISH_WORDS[key] || [];
+                if (typeof ENGLISH_WORDS !== 'undefined') {
+                    const words = ENGLISH_WORDS[key] || [];
+                    // 영어 단어는 6글자 이하만 필터링
+                    return words.filter(word => word.length <= 6);
+                }
             }
             return [];
         } catch (e) {
@@ -806,7 +820,7 @@ const Practice = {
             // 세트 진행 정보 표시
             const setInfo = document.createElement('div');
             setInfo.className = 'set-info';
-            setInfo.innerHTML = `<span class="set-badge">세트 ${wp.currentSet + 1}/${wp.totalSets}</span> <span class="word-count">(${wp.completedWords}/100 단어)</span>`;
+            setInfo.innerHTML = `<span class="set-badge">세트 ${wp.currentSet + 1}/${wp.totalSets}</span> <span class="word-count">(${wp.completedWords}/50 단어)</span>`;
             container.appendChild(setInfo);
 
             // 현재 세트의 단어들 표시
@@ -1110,7 +1124,7 @@ const Practice = {
             current = currentIndex;
         } else if (mode === 'word') {
             const wp = this.state.wordPractice;
-            total = 100; // 총 100단어
+            total = 50; // 총 50단어 (5단어 x 10세트)
             current = wp.completedWords + Math.floor(currentIndex / (targetText.join(' ').length / wp.wordsPerSet));
         } else {
             total = targetText.join(' ').length;
@@ -1127,7 +1141,7 @@ const Practice = {
         if (progressEl) {
             if (mode === 'word') {
                 const wp = this.state.wordPractice;
-                progressEl.textContent = `${wp.completedWords}/100`;
+                progressEl.textContent = `${wp.completedWords}/50`;
             } else {
                 progressEl.textContent = `${current}/${total}`;
             }

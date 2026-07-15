@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>모빌리티 타이핑 - 메트로와 고속도로</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-icon">🚇</span>
+        <span class="brand-title" id="brandTitle">모빌리티 타이핑</span>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">타수</span>
+          <span class="stat-value" id="wpm">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">정확도</span>
+          <span class="stat-value" id="accuracy">100%</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">이동한 역</span>
+          <span class="stat-value" id="moved">0</span>
+        </div>
+        <div class="stat journey-stat">
+          <span class="stat-label">여정 진행</span>
+          <span class="stat-value" id="journeyProgress">0 / 0</span>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="restartBtn" class="btn">다시 시작</button>
+        <button id="newJourneyBtn" class="btn ghost">새 여정</button>
+        <button id="helpBtn" class="btn ghost">도움말</button>
+      </div>
+    </header>
+
+    <div id="map"></div>
+
+    <div class="hud">
+      <div class="hud-side left">
+        <div class="prev-station" id="prevStation">— 이전역 —</div>
+      </div>
+      <div class="hud-center">
+        <div class="route-tag" id="routeTag">2호선</div>
+        <div class="current-station" id="currentStation">출발 대기</div>
+        <div class="station-en" id="currentStationEn">From Digital Complex</div>
+      </div>
+      <div class="hud-side right">
+        <div class="next-station" id="nextStation">— 다음역 —</div>
+      </div>
+    </div>
+
+    <div class="input-bar">
+      <div class="input-wrapper">
+        <div class="target-label">목적지</div>
+        <div class="target-name" id="targetName">타이핑을 시작하세요</div>
+        <div class="target-en" id="targetEn"></div>
+        <div class="typing-box">
+          <span class="typed-correct" id="typedCorrect"></span><span class="typed-cursor" id="typedCursor">|</span><span class="typed-remaining" id="typedRemaining"></span>
+        </div>
+        <input
+          type="text"
+          id="input"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          placeholder="여기에 역 이름을 입력하세요..."
+        />
+      </div>
+      <div class="hint" id="hint">엔터를 눌러 시작</div>
+    </div>
+
+    <div id="setupModal" class="setup-modal">
+      <section class="setup-sheet" aria-labelledby="setupTitle">
+        <div class="setup-heading">
+          <div>
+            <p class="setup-kicker">모빌리티 타자연습</p>
+            <h1 id="setupTitle">어떤 여정으로 출발할까요?</h1>
+            <p>연결된 역만 따라가며, 같은 역은 두 번 지나지 않습니다.</p>
+          </div>
+          <div class="setup-train" aria-hidden="true">🚇</div>
+        </div>
+
+        <div class="network-choice" role="radiogroup" aria-label="플레이 네트워크">
+          <button class="network-card active" type="button" data-network="metro" aria-pressed="true">
+            <span class="network-icon metro-icon">🚇</span>
+            <span><b>메트로 모드</b><small>서울 지하철역을 따라 이동</small></span>
+          </button>
+          <button class="network-card" type="button" data-network="highway" aria-pressed="false">
+            <span class="network-icon highway-icon">🛣️</span>
+            <span><b>고속도로 모드</b><small>전국 도시와 지역을 연결</small></span>
+          </button>
+        </div>
+
+        <div class="mode-tabs" role="tablist" aria-label="여정 선택 방식">
+          <button class="mode-tab active" type="button" data-mode="random" role="tab" aria-selected="true">랜덤 여정</button>
+          <button class="mode-tab" type="button" data-mode="custom" role="tab" aria-selected="false">구간 지정</button>
+        </div>
+
+        <form id="setupForm">
+          <div id="randomOptions" class="setup-panel">
+            <label class="field">
+              <span id="countLabel">정거장 수</span>
+              <div class="count-control">
+                <button type="button" class="count-btn" data-delta="-5" aria-label="5개 줄이기">−</button>
+                <input id="stationCount" type="number" min="3" max="50" value="20" inputmode="numeric" />
+                <span id="countUnit">개 역</span>
+                <button type="button" class="count-btn" data-delta="5" aria-label="5개 늘리기">＋</button>
+              </div>
+            </label>
+
+            <div class="field-grid">
+              <label class="field">
+                <span id="randomStartLabel">출발역</span>
+                <input id="randomStart" list="stationList" placeholder="비워두면 랜덤" autocomplete="off" />
+              </label>
+              <label class="field">
+                <span>지역 범위</span>
+                <select id="regionMode">
+                  <option value="seoul">서울 중심</option>
+                  <option value="all">수도권 전체</option>
+                </select>
+              </label>
+            </div>
+
+            <fieldset class="field option-field">
+              <legend id="transferLegend">환승 스타일</legend>
+              <div class="option-cards">
+                <label><input type="radio" name="transferStyle" value="balanced" checked /><span><b>균형</b><small id="balancedHelp">자연스럽게 노선 변경</small></span></label>
+                <label><input type="radio" name="transferStyle" value="transfer" /><span><b id="transferStrongLabel">환승 적극</b><small id="transferStrongHelp">여러 노선을 경험</small></span></label>
+                <label><input type="radio" name="transferStyle" value="minimal" /><span><b id="transferMinLabel">환승 최소</b><small id="transferMinHelp">한 노선을 길게 연습</small></span></label>
+              </div>
+            </fieldset>
+          </div>
+
+          <div id="customOptions" class="setup-panel hidden">
+            <div class="field-grid custom-fields">
+              <label class="field">
+                <span id="fromLabel">출발역</span>
+                <input id="fromStation" list="stationList" placeholder="예: 김포공항" autocomplete="off" />
+              </label>
+              <span class="route-arrow" aria-hidden="true">→</span>
+              <label class="field">
+                <span id="toLabel">도착역</span>
+                <input id="toStation" list="stationList" placeholder="예: 서울역" autocomplete="off" />
+              </label>
+            </div>
+            <p class="custom-help" id="customHelp">두 역 사이의 중복 없는 최단 경로로 연습합니다.</p>
+          </div>
+
+          <label class="field pace-field">
+            <span>열차 이동 속도</span>
+            <select id="paceMode">
+              <option value="normal">보통</option>
+              <option value="slow">천천히</option>
+              <option value="fast">빠르게</option>
+            </select>
+          </label>
+
+          <p id="setupError" class="setup-error" role="alert"></p>
+          <button id="startJourneyBtn" class="start-journey" type="submit">여정 만들기 <span>→</span></button>
+        </form>
+      </section>
+    </div>
+
+    <div id="completeModal" class="modal hidden">
+      <div class="modal-content complete-content">
+        <div class="complete-icon">✓</div>
+        <h2>여정 완료!</h2>
+        <p id="completeSummary">모든 역에 도착했습니다.</p>
+        <div class="complete-stats">
+          <span><b id="completeCount">0</b>개 역</span>
+          <span><b id="completeAccuracy">100%</b> 정확도</span>
+        </div>
+        <div class="complete-actions">
+          <button id="repeatJourneyBtn" class="btn ghost">같은 여정 다시</button>
+          <button id="completeNewBtn" class="btn">새 여정 만들기</button>
+        </div>
+      </div>
+    </div>
+
+    <datalist id="stationList"></datalist>
+
+    <div id="helpModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>게임 방법</h2>
+        <ul>
+          <li>시작 화면에서 <b>메트로</b> 또는 <b>고속도로</b> 모드를 선택합니다.</li>
+          <li>랜덤 여정은 입력한 개수만큼 연결된 역·지역을 선택하며, 같은 곳을 두 번 지나지 않습니다.</li>
+          <li>구간 지정은 출발지와 도착지 사이의 중복 없는 최단 경로를 만듭니다.</li>
+          <li>목적지로 지정된 역이나 지역 이름을 <b>타이핑</b>하면 차량이 실제 좌표를 따라 이동합니다.</li>
+          <li>정확하게 입력할수록 정확도가 올라가요.</li>
+        </ul>
+        <button id="closeHelp" class="btn">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script src="data.js"></script>
+  <script src="highway-data.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

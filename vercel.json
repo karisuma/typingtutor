@@ -1,8 +1,19 @@
 {
+    "redirects": [
+        {
+            "source": "/mobility",
+            "destination": "/mobility/",
+            "permanent": false
+        }
+    ],
     "rewrites": [
         {
             "source": "/",
             "destination": "/src/index.html"
+        },
+        {
+            "source": "/mobility/:path*",
+            "destination": "/src/mobility/:path*"
         },
         {
             "source": "/admin",

@@ -196,6 +196,7 @@
     currentStation: START_STATION,
     targetStation: null,
     journey: [],
+    journeyLines: [],
     journeyIndex: 0,
     journeyMode: "random",
     journeyLabel: "",
@@ -213,6 +214,7 @@
     startHandoffTimer: null,
     staleCompositionChar: "",
     staleCompositionUntil: 0,
+    suppressBlurProcessing: false,
   };
 
   // ---------------------- Helpers ----------------------
@@ -255,20 +257,35 @@
       ? state.journey[state.journeyIndex + 1] || "종착"
       : "여정 설정");
 
-    const lineInfos = linesAtStation(name);
     const tag = $("#routeTag");
     const hud = $(".hud");
-    if (lineInfos.length > 0) {
-      tag.textContent = lineInfos.map((l) => l.name).join(" · ");
-      const primary = lineInfos[0];
-      tag.style.background = primary.color;
-      tag.style.color = readableTextColor(primary.color);
-      hud.style.setProperty("--station-line", primary.color);
+    const previousLineKey = state.journeyLines[state.journeyIndex - 1] || state.journeyLines[state.journeyIndex];
+    const nextLineKey = state.journeyLines[state.journeyIndex] || state.journeyLines[state.journeyIndex - 1];
+    const previousLine = activeData.lines[previousLineKey];
+    const nextLine = activeData.lines[nextLineKey];
+    if (previousLine || nextLine) {
+      const incoming = previousLine || nextLine;
+      const outgoing = nextLine || previousLine;
+      const isTransfer = incoming.id !== outgoing.id;
+      tag.textContent = isTransfer
+        ? `${incoming.name} → ${outgoing.name}`
+        : outgoing.name;
+      tag.style.background = isTransfer
+        ? `linear-gradient(90deg, ${incoming.color} 0 50%, ${outgoing.color} 50% 100%)`
+        : outgoing.color;
+      tag.style.color = readableTextColor(outgoing.color);
+      hud.style.setProperty("--previous-line", incoming.color);
+      hud.style.setProperty("--next-line", outgoing.color);
+      hud.classList.toggle("is-transfer", isTransfer);
     } else {
-      tag.textContent = "—";
-      tag.style.background = "#4ade80";
-      tag.style.color = "#052e16";
-      hud.style.setProperty("--station-line", "#079b45");
+      const lineInfos = linesAtStation(name);
+      const primary = lineInfos[0];
+      tag.textContent = primary ? primary.name : "—";
+      tag.style.background = primary ? primary.color : "#4ade80";
+      tag.style.color = primary ? readableTextColor(primary.color) : "#052e16";
+      hud.style.setProperty("--previous-line", primary ? primary.color : "#079b45");
+      hud.style.setProperty("--next-line", primary ? primary.color : "#079b45");
+      hud.classList.remove("is-transfer");
     }
 
   }
@@ -319,6 +336,22 @@
       }
     });
     return result;
+  }
+
+  function resolveRouteLineKeys(route) {
+    let activeLine = null;
+    return route.slice(0, -1).map((name, index) => {
+      const candidates = edgeLines(name, route[index + 1]);
+      const selected = activeLine && candidates.includes(activeLine)
+        ? activeLine
+        : candidates[0] || activeLine;
+      activeLine = selected || activeLine;
+      return selected || null;
+    });
+  }
+
+  function routeLineColor(lineKey) {
+    return activeData.lines[lineKey]?.color || (activeMode === "highway" ? "#e58b18" : "#08a449");
   }
 
   function routeTransferCount(route) {
@@ -434,7 +467,8 @@
       const station = activeData.stations[name];
       return [station.lat, station.lng];
     });
-    const latlngs = smoothLatLngs(stationLatLngs, 16);
+    const smoothingSegments = 16;
+    const latlngs = smoothLatLngs(stationLatLngs, smoothingSegments);
     L.polyline(latlngs, {
       color: "#ffffff",
       weight: 18,
@@ -443,24 +477,33 @@
       lineJoin: "round",
       interactive: false,
     }).addTo(journeyLayer);
-    L.polyline(latlngs, {
-      color: "#08a449",
-      weight: 10,
-      opacity: 1,
-      lineCap: "round",
-      lineJoin: "round",
-      interactive: false,
-    }).addTo(journeyLayer);
+    state.journeyLines.forEach((lineKey, index) => {
+      const segmentLatLngs = stationLatLngs.length < 3
+        ? stationLatLngs.slice(index, index + 2)
+        : latlngs.slice(index * smoothingSegments, (index + 1) * smoothingSegments + 1);
+      L.polyline(segmentLatLngs, {
+        color: routeLineColor(lineKey),
+        weight: 10,
+        opacity: 1,
+        lineCap: "round",
+        lineJoin: "round",
+        interactive: false,
+        className: `journey-segment journey-line-${lineKey || "unknown"}`,
+      }).addTo(journeyLayer);
+    });
 
     route.forEach((name, index) => {
       const station = activeData.stations[name];
+      const lineKey = state.journeyLines[index] || state.journeyLines[index - 1];
+      const routeColor = routeLineColor(lineKey);
+      const routeText = readableTextColor(routeColor);
       const endpointClass = index === 0 || index === route.length - 1 ? " endpoint" : "";
       const positionClass = index % 2 === 0 ? " above" : " below";
       const labelIcon = L.divIcon({
         className: "route-label-icon",
         iconSize: [1, 1],
         iconAnchor: [0, 0],
-        html: `<div class="route-stop-label${endpointClass}${positionClass}" data-route-index="${index}"><span>${index + 1}</span><strong>${name}</strong></div>`,
+        html: `<div class="route-stop-label${endpointClass}${positionClass}" data-route-index="${index}" style="--route-color:${routeColor};--route-text:${routeText}"><span>${index + 1}</span><strong>${name}</strong></div>`,
       });
       L.marker([station.lat, station.lng], {
         icon: labelIcon,
@@ -483,13 +526,20 @@
     activeMarkers.forEach((marker) => {
       const element = marker.getElement();
       const dot = element && element.querySelector(".station-marker, .highway-marker");
-      if (dot) dot.classList.remove("selected-route");
+      if (dot) {
+        dot.classList.remove("selected-route");
+        dot.style.removeProperty("--route-color");
+      }
     });
-    route.forEach((name) => {
+    route.forEach((name, index) => {
       const marker = activeMarkers.get(name);
       const element = marker && marker.getElement();
       const dot = element && element.querySelector(".station-marker, .highway-marker");
-      if (dot) dot.classList.add("selected-route");
+      if (dot) {
+        const lineKey = state.journeyLines[index] || state.journeyLines[index - 1];
+        dot.style.setProperty("--route-color", routeLineColor(lineKey));
+        dot.classList.add("selected-route");
+      }
     });
   }
 
@@ -601,6 +651,7 @@
     if (new Set(route).size !== route.length) throw new Error("중복 역이 포함된 여정은 시작할 수 없습니다.");
 
     state.journey = route.slice();
+    state.journeyLines = resolveRouteLineKeys(route);
     state.journeyIndex = 0;
     state.journeyLabel = label;
     state.awaitingStart = true;
@@ -960,8 +1011,10 @@
       clearTimeout(state.startHandoffTimer);
       state.startHandoffTimer = null;
       cancelPendingInputProcessing();
+      state.suppressBlurProcessing = true;
       input.blur();
       input.disabled = true;
+      cancelPendingInputProcessing();
       state.awaitingStart = false;
       updateJourneyProgress();
       setHud(state.currentStation);
@@ -978,6 +1031,7 @@
         state.startHandoffTimer = null;
         if (next) setTarget(next);
         input.disabled = false;
+        state.suppressBlurProcessing = false;
         input.focus();
       }, 80);
       return;
@@ -1023,7 +1077,7 @@
       scheduleInputProcessing(input);
     });
     input.addEventListener("blur", () => {
-      if (!state.isComposing) scheduleInputProcessing(input, 0);
+      if (!state.isComposing && !state.suppressBlurProcessing) scheduleInputProcessing(input, 0);
     });
     input.disabled = true;
     $("#targetName").textContent = "여정을 설정하세요";

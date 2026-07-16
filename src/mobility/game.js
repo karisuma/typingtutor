@@ -232,9 +232,8 @@
     return yiq >= 150 ? "#111" : "#fff";
   }
 
-  function setHud(name, en) {
+  function setHud(name) {
     $("#currentStation").textContent = name || "출발 대기";
-    $("#currentStationEn").textContent = en || "—";
 
     const lineInfos = linesAtStation(name);
     const tag = $("#routeTag");
@@ -249,15 +248,6 @@
       tag.style.color = "#052e16";
     }
 
-    // prev / next (현재 호선 위주의 인접역 표시)
-    const neighbors = neighborsOf(name);
-    if (neighbors.length > 0) {
-      $("#nextStation").textContent = "→ " + neighbors[0];
-      $("#prevStation").textContent = "← " + (neighbors[1] || neighbors[0]);
-    } else {
-      $("#nextStation").textContent = "— 다음역 —";
-      $("#prevStation").textContent = "— 이전역 —";
-    }
   }
 
   function neighborsOf(name) {
@@ -452,7 +442,7 @@
       L.marker([station.lat, station.lng], {
         icon: labelIcon,
         keyboard: false,
-        zIndexOffset: 700 + index,
+        zIndexOffset: 1400 + index,
       }).addTo(journeyLayer);
     });
 
@@ -511,6 +501,7 @@
     document.body.classList.toggle("highway-mode", mode === "highway");
     if (mode === "highway") {
       $("#brandTitle").textContent = "고속도로 타이핑";
+      $("#typingInstruction").textContent = "지역 이름을 입력해 이동하세요";
       if (map.hasLayer(subwayLayer)) map.removeLayer(subwayLayer);
       highwayLayer.addTo(map);
       activeData = HIGHWAY_DATA;
@@ -536,6 +527,7 @@
       map.fitBounds([[34.5, 126.0], [38.4, 129.7]], { padding: [28, 28] });
     } else {
       $("#brandTitle").textContent = "메트로 타이핑";
+      $("#typingInstruction").textContent = "역 이름을 입력해 이동하세요";
       if (map.hasLayer(highwayLayer)) map.removeLayer(highwayLayer);
       subwayLayer.addTo(map);
       activeData = SUBWAY_DATA;
@@ -590,7 +582,7 @@
 
     const start = activeData.stations[state.currentStation];
     trainMarker.setLatLng([start.lat, start.lng]);
-    setHud(state.currentStation, start.en);
+    setHud(state.currentStation);
     drawJourney(route);
     setJourneyFocus(true, route);
     updateJourneyProgress();
@@ -609,9 +601,10 @@
     $("#completeSummary").textContent = `${state.journey[0]}에서 ${state.journey[state.journey.length - 1]}까지 완주했습니다.`;
     $("#input").disabled = true;
     $("#targetName").textContent = "여정 완료";
-    $("#targetEn").textContent = "Journey complete";
-    $("#typedCorrect").textContent = "";
-    $("#typedRemaining").textContent = "";
+    $("#nextStation").textContent = "도착 완료";
+    $("#typingFeedback").innerHTML = '<span class="char-correct">여정 완료</span>';
+    $("#inputStatus").textContent = "완주";
+    $("#inputWrapper").className = "input-wrapper is-complete";
     $("#completeModal").classList.remove("hidden");
   }
 
@@ -669,18 +662,6 @@
       const lng = from[1] + (to[1] - from[1]) * localProgress;
       trainMarker.setLatLng([lat, lng]);
 
-      const el = trainMarker.getElement();
-      if (el) {
-        const body = el.querySelector(".body");
-        if (body) {
-          const angle = computeAngle(
-            { lat: from[0], lng: from[1] },
-            { lat: to[0], lng: to[1] }
-          );
-          body.style.transform = `translate(-50%, -50%) rotate(${-angle}deg)`;
-        }
-      }
-
       if (progress < 1) requestAnimationFrame(step);
       else {
         state.isMoving = false;
@@ -688,13 +669,6 @@
       }
     }
     requestAnimationFrame(step);
-  }
-
-  function computeAngle(a, b) {
-    const dy = b.lat - a.lat;
-    const dx = b.lng - a.lng;
-    // 지도의 y는 위로 갈수록 큼 → atan2(-dy, dx)
-    return (Math.atan2(-dy, dx) * 180) / Math.PI;
   }
 
   // ---------------------- Target Generation ----------------------
@@ -711,22 +685,64 @@
     return all[Math.floor(Math.random() * all.length)];
   }
 
+  function renderTypingFeedback(value, target) {
+    const feedback = $("#typingFeedback");
+    feedback.textContent = "";
+    const targetChars = Array.from(target || "");
+    const valueChars = Array.from(value || "");
+    const length = Math.max(targetChars.length, valueChars.length);
+
+    for (let index = 0; index < length; index++) {
+      const span = document.createElement("span");
+      if (index >= valueChars.length) {
+        span.className = "char-pending";
+        span.textContent = targetChars[index] || "";
+      } else if (valueChars[index] === targetChars[index]) {
+        span.className = "char-correct";
+        span.textContent = valueChars[index];
+      } else {
+        span.className = "char-wrong";
+        span.textContent = valueChars[index];
+      }
+      feedback.appendChild(span);
+    }
+  }
+
+  function focusCurrentStep(targetName) {
+    const origin = activeData.stations[state.currentStation];
+    const destination = activeData.stations[targetName];
+    if (!origin || !destination) return;
+    const compact = window.innerWidth <= 720;
+    map.fitBounds(
+      L.latLngBounds([
+        [origin.lat, origin.lng],
+        [destination.lat, destination.lng],
+      ]),
+      {
+        paddingTopLeft: compact ? [44, 55] : [90, 85],
+        paddingBottomRight: compact ? [44, 80] : [90, 110],
+        maxZoom: compact ? 14 : 15,
+        animate: true,
+      }
+    );
+  }
+
   function setTarget(name) {
     state.targetStation = name;
     state.startedAt = null;
     state.firstKeyAt = null;
-    const s = activeData.stations[name];
     $("#targetName").textContent = name;
-    $("#targetName").classList.remove("dim");
-    $("#targetEn").textContent = s ? s.en : "";
-    $("#typedCorrect").textContent = "";
-    $("#typedCursor").textContent = "|";
-    $("#typedRemaining").textContent = name;
+    $("#nextStation").textContent = name;
+    $("#inputStatus").textContent = "한글로 입력";
+    $("#inputWrapper").className = "input-wrapper";
+    renderTypingFeedback("", name);
     $("#input").value = "";
+    $("#input").setAttribute("aria-label", `${name} 입력`);
 
     activeMarkers.forEach((marker) => marker.closeTooltip());
     const targetMarker = activeMarkers.get(name);
     if (targetMarker) targetMarker.openTooltip();
+    setTimeout(() => focusCurrentStep(name), 0);
   }
 
   // ---------------------- Stats ----------------------
@@ -783,12 +799,18 @@
       }
     }
 
-    // 타이핑 박스 업데이트
-    const correctPart = value;
-    const remaining = target.slice(value.length);
-    $("#typedCorrect").textContent = correctPart;
-    $("#typedCursor").textContent = value.length < target.length ? "|" : " ";
-    $("#typedRemaining").textContent = remaining;
+    const valueChars = Array.from(value);
+    const targetChars = Array.from(target);
+    const hasError = valueChars.some((char, index) => char !== targetChars[index]);
+    const inputWrapper = $("#inputWrapper");
+    inputWrapper.classList.toggle("has-error", hasError);
+    inputWrapper.classList.toggle("has-input", value.length > 0 && !hasError);
+    $("#inputStatus").textContent = hasError
+      ? "오타를 고쳐주세요"
+      : value.length > 0
+        ? "정확해요"
+        : "한글로 입력";
+    renderTypingFeedback(value, target);
 
     // 정답 완전 일치 시 이동
     if (value === target) {
@@ -807,10 +829,9 @@
     // 입력 잠금 (선택적 — UX를 위해 짧게 유지)
     $("#input").value = "";
     $("#input").disabled = true;
-    $("#typedCorrect").textContent = destName;
-    $("#typedCursor").textContent = " ";
-    $("#typedRemaining").textContent = "";
-    $("#targetName").classList.add("dim");
+    renderTypingFeedback(destName, destName);
+    $("#inputStatus").textContent = "이동 중";
+    $("#inputWrapper").className = "input-wrapper is-moving";
 
     // 도착 역 표시 (toast)
     showToast(`${state.currentStation} → ${destName}`);
@@ -818,7 +839,7 @@
     animateTrainAlong(path, () => {
       state.currentStation = destName;
       state.movedCount++;
-      setHud(state.currentStation, activeData.stations[destName].en);
+      setHud(state.currentStation);
       updateStats();
       map.panTo([
         activeData.stations[destName].lat,
@@ -832,13 +853,13 @@
 
   // ---------------------- Init ----------------------
   function init() {
-    setHud(state.currentStation, SUBWAY_DATA.stations[state.currentStation].en);
+    setHud(state.currentStation);
     const input = $("#input");
     input.addEventListener("input", handleInput);
     input.disabled = true;
     $("#targetName").textContent = "여정을 설정하세요";
-    $("#targetEn").textContent = "Choose a journey";
-    $("#typedRemaining").textContent = "";
+    $("#nextStation").textContent = "여정 설정";
+    $("#typingFeedback").innerHTML = '<span class="char-pending">시작 화면에서 여정을 선택하세요</span>';
 
     let setupMode = "random";
 

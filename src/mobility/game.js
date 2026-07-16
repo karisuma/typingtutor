@@ -209,6 +209,7 @@
     firstKeyAt: null,
     isComposing: false,
     lastCountedValue: "",
+    pendingInputTimer: null,
   };
 
   // ---------------------- Helpers ----------------------
@@ -769,6 +770,8 @@
   }
 
   function setTarget(name, { focus = true } = {}) {
+    clearTimeout(state.pendingInputTimer);
+    state.pendingInputTimer = null;
     state.targetStation = name;
     state.startedAt = null;
     state.firstKeyAt = null;
@@ -872,6 +875,21 @@
     updateStats();
   }
 
+  function cancelPendingInputProcessing() {
+    clearTimeout(state.pendingInputTimer);
+    state.pendingInputTimer = null;
+  }
+
+  function scheduleInputProcessing(input, delay = 90, allowWhileComposing = false) {
+    cancelPendingInputProcessing();
+    state.pendingInputTimer = setTimeout(() => {
+      state.pendingInputTimer = null;
+      if (state.isMoving || !state.targetStation) return;
+      if (state.isComposing && !allowWhileComposing) return;
+      processCommittedInput(input.value);
+    }, delay);
+  }
+
   function handleInput(e) {
     if (state.isMoving || !state.targetStation) return;
 
@@ -880,24 +898,21 @@
       state.firstKeyAt = Date.now();
     }
 
-    // 조합 중에는 투명 입력 위의 복제 텍스트를 다시 만들지 않는다.
-    // 실제 input을 표시해야 다음 음절 조합 시 앞 음절이 사라지지 않는다.
+    // 한글 조합 중에는 class, textContent, 통계 등 어떤 DOM도 변경하지 않는다.
+    // compositionend 직후 다음 음절이 시작되는 빠른 입력에서 동기 DOM 갱신이
+    // IME 조합을 취소해 앞 음절을 잃는 브라우저 타이밍 문제를 피한다.
     if (e.isComposing || state.isComposing) {
-      $("#inputWrapper").classList.add("is-composing");
-      $("#inputStatus").textContent = "입력 중";
-      // 일부 한글 IME는 단어 전체를 입력할 때까지 compositionend를 보내지 않는다.
-      // 정답이 완성된 순간에는 조합 종료를 기다리지 않고 정상 이동을 시작한다.
+      cancelPendingInputProcessing();
+      // 일부 IME는 단어 전체가 완성돼도 compositionend를 늦게 보낸다.
+      // 정답일 때만 충분한 무입력 시간을 둔 뒤 판정한다.
       if (value === state.targetStation) {
-        state.isComposing = false;
-        $("#inputWrapper").classList.remove("is-composing");
-        processCommittedInput(value);
-        return;
+        scheduleInputProcessing(e.target, 180, true);
       }
-      updateStats();
       return;
     }
 
-    processCommittedInput(value);
+    // 일반 입력도 즉시 DOM을 갱신하지 않고 짧게 합쳐서 한 번만 판정한다.
+    scheduleInputProcessing(e.target);
   }
 
   function moveTrainTo(destName) {
@@ -949,13 +964,14 @@
     input.addEventListener("input", handleInput);
     input.addEventListener("compositionstart", () => {
       state.isComposing = true;
-      $("#inputWrapper").classList.add("is-composing");
-      $("#inputStatus").textContent = "입력 중";
+      cancelPendingInputProcessing();
     });
     input.addEventListener("compositionend", () => {
       state.isComposing = false;
-      $("#inputWrapper").classList.remove("is-composing");
-      processCommittedInput(input.value);
+      scheduleInputProcessing(input);
+    });
+    input.addEventListener("blur", () => {
+      if (!state.isComposing) scheduleInputProcessing(input, 0);
     });
     input.disabled = true;
     $("#targetName").textContent = "여정을 설정하세요";

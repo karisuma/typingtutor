@@ -1,5 +1,32 @@
 {
+    "redirects": [
+        {
+            "source": "/mobility",
+            "destination": "/mobility/",
+            "permanent": false
+        }
+    ],
     "rewrites": [
+        {
+            "source": "/",
+            "destination": "/mobility/index.html"
+        },
+        {
+            "source": "/style.css",
+            "destination": "/mobility/style.css"
+        },
+        {
+            "source": "/data.js",
+            "destination": "/mobility/data.js"
+        },
+        {
+            "source": "/highway-data.js",
+            "destination": "/mobility/highway-data.js"
+        },
+        {
+            "source": "/game.js",
+            "destination": "/mobility/game.js"
+        },
         {
             "source": "/admin",
             "destination": "/admin/index.html"

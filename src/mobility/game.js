@@ -655,12 +655,16 @@
     const startedAt = performance.now();
 
     function step(now) {
-      const progress = Math.min(1, (now - startedAt) / duration);
-      const exactIndex = progress * (animationPoints.length - 1);
-      const index = Math.min(animationPoints.length - 2, Math.floor(exactIndex));
+      // 일부 브라우저에서는 첫 requestAnimationFrame의 타임스탬프가
+      // performance.now()보다 아주 작게 전달될 수 있다. 이때 음수 인덱스가
+      // 만들어지지 않도록 진행률과 보간 인덱스를 양쪽 경계에서 제한한다.
+      const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
+      const lastIndex = animationPoints.length - 1;
+      const exactIndex = progress * lastIndex;
+      const index = Math.max(0, Math.min(lastIndex - 1, Math.floor(exactIndex)));
       const localProgress = exactIndex - index;
       const from = animationPoints[index];
-      const to = animationPoints[index + 1];
+      const to = animationPoints[Math.min(lastIndex, index + 1)];
       const lat = from[0] + (to[0] - from[0]) * localProgress;
       const lng = from[1] + (to[1] - from[1]) * localProgress;
       trainMarker.setLatLng([lat, lng]);

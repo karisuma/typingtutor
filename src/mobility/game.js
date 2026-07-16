@@ -30,10 +30,13 @@
   const highwayLayer = L.layerGroup();
   const subwayLineLayers = [];
   const highwayLineLayers = [];
+  const subwaySegmentPaths = new Map();
+  const highwaySegmentPaths = new Map();
+  const LINE_SMOOTHING_SEGMENTS = 12;
 
   // 라벨 포함된 밝은 베이스 — 게임 분위기를 위해 단독으로 사용하지 않고 어두운 타일 사용
   // ---------------------- Line Drawing ----------------------
-  function smoothLatLngs(points, segments = 12) {
+  function smoothLatLngs(points, segments = LINE_SMOOTHING_SEGMENTS) {
     if (points.length < 3) return points;
     const result = [];
     for (let i = 0; i < points.length - 1; i++) {
@@ -60,6 +63,7 @@
 
   function drawLine(lineKey, line, data = SUBWAY_DATA, layer = subwayLayer, width = 5) {
     const list = line.seoulOnly || line.stations;
+    const geometryStops = list.slice();
     const stationLatLngs = list
       .map((name) => data.stations[name])
       .filter(Boolean)
@@ -67,10 +71,24 @@
 
     if (line.circular && stationLatLngs.length > 2) {
       stationLatLngs.push(stationLatLngs[0]);
+      geometryStops.push(geometryStops[0]);
     }
 
     if (stationLatLngs.length < 2) return;
-    const latlngs = smoothLatLngs(stationLatLngs);
+    const latlngs = smoothLatLngs(stationLatLngs, LINE_SMOOTHING_SEGMENTS);
+    const segmentStore = data === HIGHWAY_DATA ? highwaySegmentPaths : subwaySegmentPaths;
+    for (let index = 0; index < geometryStops.length - 1; index++) {
+      const from = geometryStops[index];
+      const to = geometryStops[index + 1];
+      const segment = stationLatLngs.length < 3
+        ? stationLatLngs.slice(index, index + 2)
+        : latlngs.slice(
+          index * LINE_SMOOTHING_SEGMENTS,
+          (index + 1) * LINE_SMOOTHING_SEGMENTS + 1
+        );
+      segmentStore.set(`${lineKey}|${from}|${to}`, segment);
+      segmentStore.set(`${lineKey}|${to}|${from}`, segment.slice().reverse());
+    }
 
     // 노선도 특유의 밝은 외곽선
     const outline = L.polyline(latlngs, {
@@ -201,6 +219,7 @@
     targetStation: null,
     journey: [],
     journeyLines: [],
+    journeySegmentPaths: [],
     journeyIndex: 0,
     journeyMode: "random",
     journeyLabel: "",
@@ -412,6 +431,23 @@
     return activeData.lines[lineKey]?.color || (activeMode === "highway" ? "#e58b18" : "#08a449");
   }
 
+  function railSegmentPath(from, to, lineKey) {
+    const segmentStore = activeMode === "highway" ? highwaySegmentPaths : subwaySegmentPaths;
+    const exact = lineKey ? segmentStore.get(`${lineKey}|${from}|${to}`) : null;
+    if (exact?.length >= 2) return exact;
+
+    const candidate = edgeLines(from, to)
+      .map((key) => segmentStore.get(`${key}|${from}|${to}`))
+      .find((segment) => segment?.length >= 2);
+    if (candidate) return candidate;
+
+    const origin = activeData.stations[from];
+    const destination = activeData.stations[to];
+    return origin && destination
+      ? [[origin.lat, origin.lng], [destination.lat, destination.lng]]
+      : [];
+  }
+
   function routeTransferCount(route) {
     let activeLine = null;
     let transfers = 0;
@@ -525,8 +561,13 @@
       const station = activeData.stations[name];
       return [station.lat, station.lng];
     });
-    const smoothingSegments = 16;
-    const latlngs = smoothLatLngs(stationLatLngs, smoothingSegments);
+    state.journeySegmentPaths = route.slice(0, -1).map((name, index) =>
+      railSegmentPath(name, route[index + 1], state.journeyLines[index])
+    );
+    const latlngs = state.journeySegmentPaths.reduce((points, segment, index) => {
+      points.push(...(index === 0 ? segment : segment.slice(1)));
+      return points;
+    }, []);
     L.polyline(latlngs, {
       color: "#ffffff",
       weight: 18,
@@ -536,9 +577,7 @@
       interactive: false,
     }).addTo(journeyLayer);
     state.journeyLines.forEach((lineKey, index) => {
-      const segmentLatLngs = stationLatLngs.length < 3
-        ? stationLatLngs.slice(index, index + 2)
-        : latlngs.slice(index * smoothingSegments, (index + 1) * smoothingSegments + 1);
+      const segmentLatLngs = state.journeySegmentPaths[index];
       L.polyline(segmentLatLngs, {
         color: routeLineColor(lineKey),
         weight: 10,
@@ -777,7 +816,7 @@
   }
 
   // ---------------------- Movement ----------------------
-  function animateTrainAlong(path, onDone) {
+  function animateTrainAlong(path, onDone, railPoints = null) {
     if (!path || path.length < 2) {
       onDone && onDone();
       return;
@@ -787,7 +826,9 @@
       const station = activeData.stations[name];
       return [station.lat, station.lng];
     });
-    const animationPoints = smoothLatLngs(stationPoints, 18);
+    const animationPoints = railPoints?.length >= 2
+      ? railPoints
+      : smoothLatLngs(stationPoints, 18);
     const duration = (path.length - 1) * state.segmentMs;
     const startedAt = performance.now();
 
@@ -1114,6 +1155,12 @@
     // 도착 역 표시 (toast)
     showToast(`${stationLabel(state.currentStation)} → ${stationLabel(destName)}`);
 
+    const railPoints =
+      state.journey[state.journeyIndex] === state.currentStation &&
+      state.journey[state.journeyIndex + 1] === destName
+        ? state.journeySegmentPaths[state.journeyIndex]
+        : null;
+
     animateTrainAlong(path, () => {
       state.currentStation = destName;
       state.movedCount++;
@@ -1121,7 +1168,7 @@
       $("#input").disabled = false;
       $("#input").focus();
       advanceJourney();
-    });
+    }, railPoints);
   }
 
   // ---------------------- Init ----------------------

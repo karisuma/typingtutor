@@ -1,8 +1,35 @@
 {
+    "redirects": [
+        {
+            "source": "/mobility",
+            "destination": "/mobility/",
+            "permanent": false
+        }
+    ],
     "rewrites": [
         {
             "source": "/",
-            "destination": "/src/index.html"
+            "destination": "/src/mobility/index.html"
+        },
+        {
+            "source": "/style.css",
+            "destination": "/src/mobility/style.css"
+        },
+        {
+            "source": "/data.js",
+            "destination": "/src/mobility/data.js"
+        },
+        {
+            "source": "/highway-data.js",
+            "destination": "/src/mobility/highway-data.js"
+        },
+        {
+            "source": "/game.js",
+            "destination": "/src/mobility/game.js"
+        },
+        {
+            "source": "/mobility/:path*",
+            "destination": "/src/mobility/:path*"
         },
         {
             "source": "/admin",

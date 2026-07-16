@@ -9,7 +9,7 @@
   const map = L.map("map", {
     center: [37.5663, 126.9784],
     zoom: 12,
-    minZoom: 11,
+    minZoom: 7,
     maxZoom: 17,
     zoomControl: true,
     attributionControl: true,
@@ -64,6 +64,10 @@
       .map((name) => data.stations[name])
       .filter(Boolean)
       .map((s) => [s.lat, s.lng]);
+
+    if (line.circular && stationLatLngs.length > 2) {
+      stationLatLngs.push(stationLatLngs[0]);
+    }
 
     if (stationLatLngs.length < 2) return;
     const latlngs = smoothLatLngs(stationLatLngs);
@@ -221,13 +225,34 @@
   // 역 이름으로 호선 정보 찾기
   function linesAtStation(name) {
     const result = [];
+    const seen = new Set();
     Object.entries(activeData.lines).forEach(([key, line]) => {
       const list = line.seoulOnly || line.stations;
-      if (list.includes(name)) {
+      if (list.includes(name) && !seen.has(line.id || key)) {
+        seen.add(line.id || key);
         result.push({ key, name: line.name, color: line.color });
       }
     });
     return result;
+  }
+
+  function stationLabel(id) {
+    return activeData.stations[id]?.name || id || "—";
+  }
+
+  function stationOptionLabel(id) {
+    const station = activeData.stations[id];
+    return station?.optionName || station?.name || id;
+  }
+
+  function resolveStationInput(value) {
+    const input = String(value || "").trim();
+    if (!input) return null;
+    if (activeData.stations[input]) return input;
+    const matches = Object.entries(activeData.stations)
+      .filter(([, station]) => (station.optionName || station.name) === input || station.name === input)
+      .map(([id]) => id);
+    return matches.length === 1 ? matches[0] : null;
   }
 
   // 가독성 좋은 텍스트 색상 (밝은 배경 / 어두운 배경)
@@ -259,15 +284,15 @@
     const nextName = targetIndex >= 0 ? state.journey[targetIndex + 1] : null;
     const afterNextName = targetIndex >= 0 ? state.journey[targetIndex + 2] : null;
 
-    setHudStation("#currentStation", targetName);
+    setHudStation("#currentStation", stationLabel(targetName));
     setHudStation("#prevStation", hasJourney
-      ? state.journey[targetIndex - 1] || "출발"
+      ? (state.journey[targetIndex - 1] ? stationLabel(state.journey[targetIndex - 1]) : "출발")
       : "—");
     setHudStation("#nextStation", hasJourney
-      ? nextName || "종착"
+      ? (nextName ? stationLabel(nextName) : "종착")
       : "여정 설정");
     setHudStation("#afterNextStation", hasJourney
-      ? afterNextName || (nextName ? "종착" : "—")
+      ? (afterNextName ? stationLabel(afterNextName) : (nextName ? "종착" : "—"))
       : "—");
 
     const tag = $("#routeTag");
@@ -352,8 +377,23 @@
           break;
         }
       }
+      if (
+        line.circular && list.length > 2 &&
+        ((list[0] === from && list.at(-1) === to) || (list[0] === to && list.at(-1) === from)) &&
+        !result.includes(key)
+      ) {
+        result.push(key);
+      }
     });
     return result;
+  }
+
+  function lineGroup(lineKey) {
+    return activeData.lines[lineKey]?.id || lineKey;
+  }
+
+  function sameLineGroup(a, b) {
+    return Boolean(a && b && lineGroup(a) === lineGroup(b));
   }
 
   function resolveRouteLineKeys(route) {
@@ -362,7 +402,7 @@
       const candidates = edgeLines(name, route[index + 1]);
       const selected = activeLine && candidates.includes(activeLine)
         ? activeLine
-        : candidates[0] || activeLine;
+        : candidates.find((candidate) => sameLineGroup(activeLine, candidate)) || candidates[0] || activeLine;
       activeLine = selected || activeLine;
       return selected || null;
     });
@@ -377,9 +417,9 @@
     let transfers = 0;
     for (let i = 0; i < route.length - 1; i++) {
       const candidates = edgeLines(route[i], route[i + 1]);
-      if (activeLine && candidates.includes(activeLine)) continue;
+      if (activeLine && candidates.some((candidate) => sameLineGroup(activeLine, candidate))) continue;
       const nextLine = candidates[0] || null;
-      if (activeLine && nextLine && nextLine !== activeLine) transfers++;
+      if (activeLine && nextLine && !sameLineGroup(activeLine, nextLine)) transfers++;
       activeLine = nextLine;
     }
     return transfers;
@@ -428,7 +468,7 @@
           .filter((name) => allowed.has(name) && !visited.has(name))
           .map((name) => {
             const lines = edgeLines(current, name);
-            const continues = activeLine && lines.includes(activeLine);
+            const continues = activeLine && lines.some((lineKey) => sameLineGroup(activeLine, lineKey));
             const changes = activeLine && lines.length > 0 && !continues;
             let score = Math.random() * 10;
             if (transferStyle === "transfer") {
@@ -454,7 +494,7 @@
           route.push(candidate.name);
           visited.add(candidate.name);
           const nextLine = candidate.continues
-            ? activeLine
+            ? candidate.lines.find((lineKey) => sameLineGroup(activeLine, lineKey)) || activeLine
             : candidate.lines[0] || activeLine;
           if (walk(nextLine)) return true;
           visited.delete(candidate.name);
@@ -521,7 +561,7 @@
         className: "route-label-icon",
         iconSize: [1, 1],
         iconAnchor: [0, 0],
-        html: `<div class="route-stop-label${endpointClass}${positionClass}" data-route-index="${index}" style="--route-color:${routeColor};--route-text:${routeText}"><span>${index + 1}</span><strong>${name}</strong></div>`,
+        html: `<div class="route-stop-label${endpointClass}${positionClass}" data-route-index="${index}" style="--route-color:${routeColor};--route-text:${routeText}"><span>${index + 1}</span><strong>${stationLabel(name)}</strong></div>`,
       });
       L.marker([station.lat, station.lng], {
         icon: labelIcon,
@@ -581,8 +621,8 @@
   function populateStationList() {
     const list = $("#stationList");
     list.innerHTML = Object.keys(activeData.stations)
-      .sort((a, b) => a.localeCompare(b, "ko"))
-      .map((name) => `<option value="${name}"></option>`)
+      .sort((a, b) => stationOptionLabel(a).localeCompare(stationOptionLabel(b), "ko"))
+      .map((id) => `<option value="${stationOptionLabel(id)}"></option>`)
       .join("");
   }
 
@@ -647,7 +687,7 @@
       $("#transferMinLabel").textContent = "환승 최소";
       $("#transferMinHelp").textContent = "한 노선을 길게 연습";
       $("#regionMode").innerHTML = '<option value="seoul">서울 중심</option><option value="all">수도권 전체</option>';
-      map.fitBounds([[37.43, 126.76], [37.7, 127.19]], { padding: [32, 32] });
+      map.fitBounds(metroBounds, { padding: [32, 32] });
     }
     journeyLayer.clearLayers();
     $("#randomStart").value = "";
@@ -700,7 +740,7 @@
     const accuracy = total ? Math.round((state.typedCorrect / total) * 100) : 100;
     $("#completeCount").textContent = state.journey.length;
     $("#completeAccuracy").textContent = accuracy + "%";
-    $("#completeSummary").textContent = `${state.journey[0]}에서 ${state.journey[state.journey.length - 1]}까지 완주했습니다.`;
+    $("#completeSummary").textContent = `${stationLabel(state.journey[0])}에서 ${stationLabel(state.journey[state.journey.length - 1])}까지 완주했습니다.`;
     $("#input").disabled = true;
     $("#targetName").textContent = "여정 완료";
     setHudStation("#nextStation", "종착");
@@ -852,12 +892,13 @@
     state.firstKeyAt = null;
     state.isComposing = false;
     state.lastCountedValue = "";
-    $("#targetName").textContent = name;
+    const targetLabel = stationLabel(name);
+    $("#targetName").textContent = targetLabel;
     $("#inputStatus").textContent = "한글로 입력";
     $("#inputWrapper").className = "input-wrapper";
-    renderTypingFeedback("", name);
+    renderTypingFeedback("", targetLabel);
     $("#input").value = "";
-    $("#input").setAttribute("aria-label", `${name} 입력`);
+    $("#input").setAttribute("aria-label", `${targetLabel} 입력`);
 
     activeMarkers.forEach((marker) => marker.closeTooltip());
     if (focus) setTimeout(() => focusCurrentStep(name), 0);
@@ -919,7 +960,8 @@
     if (state.isMoving) return;
     if (!state.targetStation) return;
 
-    const target = state.targetStation;
+    const targetId = state.targetStation;
+    const target = stationLabel(targetId);
 
     // 처음 키 입력 시각 기록
     if (state.firstKeyAt === null && value.length > 0) {
@@ -944,7 +986,7 @@
 
     // 정답 완전 일치 시 이동
     if (value === target) {
-      moveTrainTo(target);
+      moveTrainTo(targetId);
     }
     updateStats();
   }
@@ -967,9 +1009,10 @@
   function finishStartingComposition(input) {
     cancelPendingInputProcessing();
     const expectedTarget = state.targetStation;
+    const expectedLabel = stationLabel(expectedTarget);
     state.pendingInputTimer = setTimeout(() => {
       state.pendingInputTimer = null;
-      if (!state.awaitingStart || input.value !== expectedTarget) return;
+      if (!state.awaitingStart || input.value !== expectedLabel) return;
 
       // blur가 현재 한글 조합을 먼저 확정한다. 조합이 끝나기 전에 입력값을
       // 지우면 마지막 음절이 다음 목표 입력창으로 넘어갈 수 있다.
@@ -1012,7 +1055,7 @@
       cancelPendingInputProcessing();
       // 일부 IME는 단어 전체가 완성돼도 compositionend를 늦게 보낸다.
       // 정답일 때만 충분한 무입력 시간을 둔 뒤 판정한다.
-      if (value === state.targetStation) {
+      if (value === stationLabel(state.targetStation)) {
         if (state.awaitingStart) finishStartingComposition(e.target);
         else scheduleInputProcessing(e.target, 180, true);
       }
@@ -1036,14 +1079,14 @@
       state.awaitingStart = false;
       updateJourneyProgress();
       setHud(state.currentStation);
-      showToast(`${destName}에서 출발합니다`);
+      showToast(`${stationLabel(destName)}에서 출발합니다`);
 
       const next = state.journey[1];
       $("#typingInstruction").textContent = activeMode === "metro"
         ? "역 이름을 입력해 이동하세요"
         : "지역 이름을 입력해 이동하세요";
       $("#inputStatus").textContent = "출발 준비";
-      state.staleCompositionChar = Array.from(destName).at(-1) || "";
+      state.staleCompositionChar = Array.from(stationLabel(destName)).at(-1) || "";
       state.staleCompositionUntil = performance.now() + 400;
       state.startHandoffTimer = setTimeout(() => {
         state.startHandoffTimer = null;
@@ -1064,12 +1107,12 @@
     // 입력 잠금 (선택적 — UX를 위해 짧게 유지)
     $("#input").value = "";
     $("#input").disabled = true;
-    renderTypingFeedback(destName, destName);
+    renderTypingFeedback(stationLabel(destName), stationLabel(destName));
     $("#inputStatus").textContent = "이동 중";
     $("#inputWrapper").className = "input-wrapper is-moving";
 
     // 도착 역 표시 (toast)
-    showToast(`${state.currentStation} → ${destName}`);
+    showToast(`${stationLabel(state.currentStation)} → ${stationLabel(destName)}`);
 
     animateTrainAlong(path, () => {
       state.currentStation = destName;
@@ -1083,6 +1126,10 @@
 
   // ---------------------- Init ----------------------
   function init() {
+    const coverage = $("#metroCoverage");
+    if (coverage && SUBWAY_DATA.meta) {
+      coverage.textContent = `${SUBWAY_DATA.meta.categoryCount}개 노선 · ${SUBWAY_DATA.meta.stationCount}개 역`;
+    }
     setHud(state.currentStation);
     const input = $("#input");
     input.addEventListener("input", handleInput);
@@ -1150,8 +1197,9 @@
         if (setupMode === "random") {
           const count = Math.max(3, Math.min(50, Number($("#stationCount").value) || 20));
           $("#stationCount").value = count;
-          const start = $("#randomStart").value.trim();
-          if (start && !activeData.stations[start]) {
+          const startValue = $("#randomStart").value.trim();
+          const start = startValue ? resolveStationInput(startValue) : null;
+          if (startValue && !start) {
             throw new Error(activeMode === "metro" ? "정확한 출발역 이름을 선택해주세요." : "정확한 출발 지역 이름을 선택해주세요.");
           }
           const style = document.querySelector('input[name="transferStyle"]:checked').value;
@@ -1159,15 +1207,15 @@
           const branchLabel = activeMode === "metro" ? "환승" : "분기";
           label = `랜덤 ${count}개 · ${branchLabel} ${routeTransferCount(route)}회`;
         } else {
-          const from = $("#fromStation").value.trim();
-          const to = $("#toStation").value.trim();
-          if (!activeData.stations[from] || !activeData.stations[to]) {
+          const from = resolveStationInput($("#fromStation").value);
+          const to = resolveStationInput($("#toStation").value);
+          if (!from || !to) {
             throw new Error(activeMode === "metro" ? "출발역과 도착역을 목록에서 선택해주세요." : "출발 지역과 도착 지역을 목록에서 선택해주세요.");
           }
           if (from === to) throw new Error("출발지와 도착지는 서로 달라야 합니다.");
           route = findPath(from, to);
           if (!route) throw new Error("두 지점을 연결하는 경로를 찾지 못했습니다.");
-          label = `${from} → ${to} · ${route.length}개`;
+          label = `${stationLabel(from)} → ${stationLabel(to)} · ${route.length}개`;
         }
         state.journeyMode = activeMode;
         startJourney(route, label, pace);
@@ -1202,12 +1250,11 @@
     12
   );
 
-  // 서울 시내 권역만 초기 화면에 맞춘다. 외곽 목적지는 이동 시 지도를 따라가게 한다.
-  const seoulBounds = L.latLngBounds([
-    [37.43, 126.76],
-    [37.70, 127.19],
-  ]);
-  map.fitBounds(seoulBounds, { padding: [32, 32] });
+  // 시작 화면에서는 수도권 전체 운영 구간을 보여주고, 여정 시작 뒤에는 현재 단계로 확대한다.
+  const metroBounds = L.latLngBounds(
+    Object.values(SUBWAY_DATA.stations).map((station) => [station.lat, station.lng])
+  );
+  map.fitBounds(metroBounds, { padding: [32, 32] });
 
   init();
 })();

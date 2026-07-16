@@ -210,6 +210,9 @@
     isComposing: false,
     lastCountedValue: "",
     pendingInputTimer: null,
+    startHandoffTimer: null,
+    staleCompositionChar: "",
+    staleCompositionUntil: 0,
   };
 
   // ---------------------- Helpers ----------------------
@@ -771,7 +774,9 @@
 
   function setTarget(name, { focus = true } = {}) {
     clearTimeout(state.pendingInputTimer);
+    clearTimeout(state.startHandoffTimer);
     state.pendingInputTimer = null;
+    state.startHandoffTimer = null;
     state.targetStation = name;
     state.startedAt = null;
     state.firstKeyAt = null;
@@ -890,10 +895,43 @@
     }, delay);
   }
 
+  function finishStartingComposition(input) {
+    cancelPendingInputProcessing();
+    const expectedTarget = state.targetStation;
+    state.pendingInputTimer = setTimeout(() => {
+      state.pendingInputTimer = null;
+      if (!state.awaitingStart || input.value !== expectedTarget) return;
+
+      // blur가 현재 한글 조합을 먼저 확정한다. 조합이 끝나기 전에 입력값을
+      // 지우면 마지막 음절이 다음 목표 입력창으로 넘어갈 수 있다.
+      input.blur();
+      clearTimeout(state.startHandoffTimer);
+      state.startHandoffTimer = setTimeout(() => {
+        state.startHandoffTimer = null;
+        if (!state.awaitingStart || state.targetStation !== expectedTarget) return;
+        state.isComposing = false;
+        processCommittedInput(input.value);
+      }, 120);
+    }, 180);
+  }
+
   function handleInput(e) {
     if (state.isMoving || !state.targetStation) return;
 
     const value = e.target.value;
+    const isStaleStartCharacter =
+      performance.now() < state.staleCompositionUntil &&
+      !e.isComposing &&
+      e.inputType === "insertCompositionText" &&
+      e.data === state.staleCompositionChar &&
+      value === state.staleCompositionChar;
+    if (isStaleStartCharacter) {
+      e.target.value = "";
+      state.staleCompositionChar = "";
+      state.staleCompositionUntil = 0;
+      cancelPendingInputProcessing();
+      return;
+    }
     if (state.firstKeyAt === null && value.length > 0) {
       state.firstKeyAt = Date.now();
     }
@@ -906,7 +944,8 @@
       // 일부 IME는 단어 전체가 완성돼도 compositionend를 늦게 보낸다.
       // 정답일 때만 충분한 무입력 시간을 둔 뒤 판정한다.
       if (value === state.targetStation) {
-        scheduleInputProcessing(e.target, 180, true);
+        if (state.awaitingStart) finishStartingComposition(e.target);
+        else scheduleInputProcessing(e.target, 180, true);
       }
       return;
     }
@@ -917,17 +956,30 @@
 
   function moveTrainTo(destName) {
     if (state.awaitingStart && destName === state.currentStation) {
+      const input = $("#input");
+      clearTimeout(state.startHandoffTimer);
+      state.startHandoffTimer = null;
+      cancelPendingInputProcessing();
+      input.blur();
+      input.disabled = true;
       state.awaitingStart = false;
       updateJourneyProgress();
       setHud(state.currentStation);
       showToast(`${destName}에서 출발합니다`);
 
       const next = state.journey[1];
-      if (next) setTarget(next);
       $("#typingInstruction").textContent = activeMode === "metro"
         ? "역 이름을 입력해 이동하세요"
         : "지역 이름을 입력해 이동하세요";
-      $("#input").focus();
+      $("#inputStatus").textContent = "출발 준비";
+      state.staleCompositionChar = Array.from(destName).at(-1) || "";
+      state.staleCompositionUntil = performance.now() + 400;
+      state.startHandoffTimer = setTimeout(() => {
+        state.startHandoffTimer = null;
+        if (next) setTarget(next);
+        input.disabled = false;
+        input.focus();
+      }, 80);
       return;
     }
 

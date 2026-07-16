@@ -244,20 +244,35 @@ body {
 }
 
 .input-heading {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   padding: 0 4px;
 }
 
 .target-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 11px;
   color: #597263;
   letter-spacing: 0.1em;
 }
 
+.typing-target-name {
+  justify-self: center;
+  color: #086f38;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .input-status {
+  justify-self: end;
   flex: 0 0 auto;
   padding: 3px 8px;
   border-radius: 999px;
@@ -999,6 +1014,7 @@ body {
   .input-bar { padding: 8px 10px 10px; }
   .input-wrapper { gap: 5px; padding: 7px 9px 9px; border-width: 3px; border-radius: 20px; }
   .target-label { font-size: 9px; letter-spacing: 0.04em; }
+  .typing-target-name { font-size: 15px; }
   .input-status { padding: 2px 6px; font-size: 8px; }
   .unified-input { height: 43px; border-radius: 12px; }
   .typing-box,

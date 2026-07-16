@@ -1039,6 +1039,14 @@ body {
   margin-bottom: 26px;
 }
 
+.setup-brand {
+  margin-bottom: 9px;
+  color: var(--setup-accent);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+
 .setup-heading h1 {
   font-size: 36px;
   line-height: 1.15;

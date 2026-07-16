@@ -517,7 +517,7 @@
     activeMode = mode;
     document.body.classList.toggle("highway-mode", mode === "highway");
     if (mode === "highway") {
-      $("#brandTitle").textContent = "고속도로 타이핑";
+      $("#brandTitle").textContent = "타이핑101";
       $("#typingInstruction").textContent = "지역 이름을 입력해 이동하세요";
       $("#previousRole").textContent = "← 이전 지역";
       $("#currentRole").textContent = "현재 지역";
@@ -546,7 +546,7 @@
       $("#regionMode").innerHTML = '<option value="all">전국 주요 도시</option>';
       map.fitBounds([[34.5, 126.0], [38.4, 129.7]], { padding: [28, 28] });
     } else {
-      $("#brandTitle").textContent = "메트로 타이핑";
+      $("#brandTitle").textContent = "타이핑101";
       $("#typingInstruction").textContent = "역 이름을 입력해 이동하세요";
       $("#previousRole").textContent = "← 이전역";
       $("#currentRole").textContent = "현재역";

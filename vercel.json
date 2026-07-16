@@ -9,7 +9,7 @@
     "rewrites": [
         {
             "source": "/",
-            "destination": "/src/index.html"
+            "destination": "/src/mobility/index.html"
         },
         {
             "source": "/mobility/:path*",

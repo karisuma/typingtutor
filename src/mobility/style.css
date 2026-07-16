@@ -295,7 +295,7 @@ body {
 .typing-box {
   position: absolute;
   inset: 0;
-  display: flex;
+  display: none;
   align-items: center;
   overflow: hidden;
   padding: 0 18px;
@@ -326,7 +326,8 @@ body {
   background: transparent;
   border: 0;
   padding: 0 18px;
-  color: transparent;
+  color: #173d27;
+  -webkit-text-fill-color: currentColor;
   caret-color: #087f3b;
   font-size: 23px;
   font-weight: 800;
@@ -370,6 +371,14 @@ body {
 .input-wrapper.has-error .input-status {
   background: #ffeaec;
   color: #c73541;
+}
+
+.input-wrapper.has-input #input {
+  color: #079a42;
+}
+
+.input-wrapper.has-error #input {
+  color: #dc3f4b;
 }
 
 .hint {

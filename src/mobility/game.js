@@ -508,9 +508,9 @@
       activeGraph = HIGHWAY_GRAPH;
       activeMarkers = highwayMarkers;
       activeTransferStations = highwayTransferStations;
-      $("#countLabel").textContent = "지역 수";
+      $("#countLabel").textContent = "몇 개 지역을 연습할까요?";
       $("#countUnit").textContent = "개 지역";
-      $("#randomStartLabel").textContent = "출발 지역";
+      $("#randomStartLabel").textContent = "시작 지역 지정";
       $("#fromLabel").textContent = "출발 지역";
       $("#toLabel").textContent = "도착 지역";
       $("#customHelp").textContent = "두 지역 사이의 중복 없는 최단 연결 경로로 연습합니다.";
@@ -534,9 +534,9 @@
       activeGraph = SUBWAY_GRAPH;
       activeMarkers = stationMarkers;
       activeTransferStations = transferStations;
-      $("#countLabel").textContent = "정거장 수";
+      $("#countLabel").textContent = "몇 개 역을 연습할까요?";
       $("#countUnit").textContent = "개 역";
-      $("#randomStartLabel").textContent = "출발역";
+      $("#randomStartLabel").textContent = "시작역 지정";
       $("#fromLabel").textContent = "출발역";
       $("#toLabel").textContent = "도착역";
       $("#customHelp").textContent = "두 역 사이의 중복 없는 최단 경로로 연습합니다.";
@@ -884,6 +884,7 @@
         });
         $("#randomOptions").classList.toggle("hidden", setupMode !== "random");
         $("#customOptions").classList.toggle("hidden", setupMode !== "custom");
+        $("#randomAdvanced").classList.toggle("hidden", setupMode !== "random");
         $("#setupError").textContent = "";
       });
     });

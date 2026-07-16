@@ -64,13 +64,18 @@
         <span class="station-node" aria-hidden="true"></span>
         <strong class="next-station" id="nextStation">여정 설정</strong>
       </div>
+      <div class="step-station step-after-next">
+        <span class="step-label" id="afterNextRole">다다음역 →</span>
+        <span class="station-node" aria-hidden="true"></span>
+        <strong class="after-next-station" id="afterNextStation">—</strong>
+      </div>
     </div>
 
     <div class="input-bar">
       <div class="input-wrapper" id="inputWrapper">
         <div class="input-heading">
           <span class="target-label" id="typingInstruction">역 이름을 입력해 이동하세요</span>
-          <strong class="typing-target-name" id="targetName">여정을 설정하세요</strong>
+          <strong class="typing-target-name" id="targetName" hidden>여정을 설정하세요</strong>
           <span class="input-status" id="inputStatus">한글로 입력</span>
         </div>
         <label class="unified-input" for="input">
@@ -82,7 +87,7 @@
             autocorrect="off"
             autocapitalize="off"
             spellcheck="false"
-            aria-labelledby="targetName"
+            aria-labelledby="typingInstruction currentStation"
           />
         </label>
       </div>

@@ -248,24 +248,40 @@
   }
 
   function setHud(name) {
-    setHudStation("#currentStation", name || "출발 대기");
     const hasJourney = state.journey.length > 0;
+    const targetIndex = hasJourney
+      ? Math.min(
+        state.awaitingStart ? state.journeyIndex : state.journeyIndex + 1,
+        state.journey.length - 1
+      )
+      : -1;
+    const targetName = targetIndex >= 0 ? state.journey[targetIndex] : (name || "출발 대기");
+    const nextName = targetIndex >= 0 ? state.journey[targetIndex + 1] : null;
+    const afterNextName = targetIndex >= 0 ? state.journey[targetIndex + 2] : null;
+
+    setHudStation("#currentStation", targetName);
     setHudStation("#prevStation", hasJourney
-      ? state.journey[state.journeyIndex - 1] || "출발"
+      ? state.journey[targetIndex - 1] || "출발"
       : "—");
     setHudStation("#nextStation", hasJourney
-      ? state.journey[state.journeyIndex + 1] || "종착"
+      ? nextName || "종착"
       : "여정 설정");
+    setHudStation("#afterNextStation", hasJourney
+      ? afterNextName || (nextName ? "종착" : "—")
+      : "—");
 
     const tag = $("#routeTag");
     const hud = $(".hud");
-    const previousLineKey = state.journeyLines[state.journeyIndex - 1] || state.journeyLines[state.journeyIndex];
-    const nextLineKey = state.journeyLines[state.journeyIndex] || state.journeyLines[state.journeyIndex - 1];
+    const previousLineKey = state.journeyLines[targetIndex - 1] || state.journeyLines[targetIndex];
+    const nextLineKey = state.journeyLines[targetIndex] || previousLineKey;
+    const followingLineKey = state.journeyLines[targetIndex + 1] || nextLineKey;
     const previousLine = activeData.lines[previousLineKey];
     const nextLine = activeData.lines[nextLineKey];
+    const followingLine = activeData.lines[followingLineKey];
     if (previousLine || nextLine) {
       const incoming = previousLine || nextLine;
       const outgoing = nextLine || previousLine;
+      const following = followingLine || outgoing;
       const isTransfer = incoming.id !== outgoing.id;
       tag.textContent = isTransfer
         ? `${incoming.name} → ${outgoing.name}`
@@ -276,15 +292,17 @@
       tag.style.color = readableTextColor(outgoing.color);
       hud.style.setProperty("--previous-line", incoming.color);
       hud.style.setProperty("--next-line", outgoing.color);
+      hud.style.setProperty("--following-line", following.color);
       hud.classList.toggle("is-transfer", isTransfer);
     } else {
-      const lineInfos = linesAtStation(name);
+      const lineInfos = linesAtStation(targetName);
       const primary = lineInfos[0];
       tag.textContent = primary ? primary.name : "—";
       tag.style.background = primary ? primary.color : "#4ade80";
       tag.style.color = primary ? readableTextColor(primary.color) : "#052e16";
       hud.style.setProperty("--previous-line", primary ? primary.color : "#079b45");
       hud.style.setProperty("--next-line", primary ? primary.color : "#079b45");
+      hud.style.setProperty("--following-line", primary ? primary.color : "#079b45");
       hud.classList.remove("is-transfer");
     }
 
@@ -686,6 +704,7 @@
     $("#input").disabled = true;
     $("#targetName").textContent = "여정 완료";
     setHudStation("#nextStation", "종착");
+    setHudStation("#afterNextStation", "—");
     $("#typingFeedback").innerHTML = '<span class="char-correct">여정 완료</span>';
     $("#inputStatus").textContent = "완주";
     $("#inputWrapper").className = "input-wrapper is-complete";
@@ -834,7 +853,6 @@
     state.isComposing = false;
     state.lastCountedValue = "";
     $("#targetName").textContent = name;
-    if (!state.awaitingStart) setHudStation("#nextStation", name);
     $("#inputStatus").textContent = "한글로 입력";
     $("#inputWrapper").className = "input-wrapper";
     renderTypingFeedback("", name);
@@ -1082,6 +1100,7 @@
     input.disabled = true;
     $("#targetName").textContent = "여정을 설정하세요";
     setHudStation("#nextStation", "여정 설정");
+    setHudStation("#afterNextStation", "—");
     $("#typingFeedback").innerHTML = '<span class="char-pending">시작 화면에서 여정을 선택하세요</span>';
 
     let setupMode = "random";

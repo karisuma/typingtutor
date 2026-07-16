@@ -765,6 +765,11 @@ body {
   transform: translate(-50%, -130%);
 }
 
+/* 선택 경로의 큰 역명 라벨과 겹치지 않도록 게임 중 작은 팝업은 숨긴다. */
+.journey-active .leaflet-tooltip.station-label {
+  display: none !important;
+}
+
 .station-marker {
   background: #fff;
   width: 10px !important;

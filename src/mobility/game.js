@@ -763,8 +763,6 @@
     $("#input").setAttribute("aria-label", `${name} 입력`);
 
     activeMarkers.forEach((marker) => marker.closeTooltip());
-    const targetMarker = activeMarkers.get(name);
-    if (targetMarker) targetMarker.openTooltip();
     setTimeout(() => focusCurrentStep(name), 0);
   }
 

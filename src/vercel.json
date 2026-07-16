@@ -1,16 +1,17 @@
 {
     "redirects": [
         {
+            "source": "/",
+            "destination": "/mobility/",
+            "permanent": false
+        },
+        {
             "source": "/mobility",
             "destination": "/mobility/",
             "permanent": false
         }
     ],
     "rewrites": [
-        {
-            "source": "/",
-            "destination": "/mobility/index.html"
-        },
         {
             "source": "/style.css",
             "destination": "/mobility/style.css"

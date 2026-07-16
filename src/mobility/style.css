@@ -711,6 +711,95 @@ body {
   border-color: #ec4a87;
 }
 
+.journey-active .station-marker:not(.selected-route),
+.journey-active .highway-marker:not(.selected-route) {
+  opacity: 0.2;
+  filter: grayscale(0.75);
+}
+
+.station-marker.selected-route {
+  width: 17px !important;
+  height: 17px !important;
+  margin: -3px;
+  border: 4px solid #078b3f;
+  background: #fff;
+  opacity: 1;
+  box-shadow: 0 0 0 4px rgba(8, 164, 73, 0.2), 0 4px 10px rgba(0, 56, 24, 0.28);
+}
+
+.highway-marker.selected-route {
+  width: 18px;
+  height: 18px;
+  margin: -3px;
+  border: 4px solid #e48a12;
+  background: #fff8e8;
+  opacity: 1;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2), 0 4px 10px rgba(90, 49, 0, 0.28);
+}
+
+.route-label-icon {
+  overflow: visible !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.route-stop-label {
+  position: absolute;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: max-content;
+  max-width: 150px;
+  padding: 5px 9px 5px 5px;
+  border: 2px solid rgba(8, 139, 63, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #173222;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(21, 66, 36, 0.16);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.route-stop-label.above { transform: translate(-50%, -41px); }
+.route-stop-label.below { transform: translate(-50%, 18px); }
+.route-stop-label span {
+  display: grid;
+  min-width: 23px;
+  height: 23px;
+  place-items: center;
+  border-radius: 50%;
+  background: #08a449;
+  color: #fff;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.route-stop-label.endpoint {
+  border-color: #075b30;
+  background: #075b30;
+  color: #fff;
+}
+
+.route-stop-label.completed { opacity: 0.5; }
+.route-stop-label.current,
+.route-stop-label.next {
+  z-index: 2;
+  border-color: #08a449;
+  font-size: 16px;
+  box-shadow: 0 7px 18px rgba(8, 112, 49, 0.28);
+}
+.route-stop-label.current.above { transform: translate(-50%, -45px) scale(1.08); }
+.route-stop-label.current.below { transform: translate(-50%, 18px) scale(1.08); }
+
+.journey-active .current-station { font-size: 25px; }
+.journey-active .route-tag { padding: 4px 13px; font-size: 12px; }
+
 .highway-marker {
   width: 11px;
   height: 11px;
@@ -825,6 +914,12 @@ body {
   .typing-box { font-size: 15px; min-height: 22px; }
   #input { font-size: 13px; }
   .hint { display: none; }
+
+  .route-stop-label { max-width: 110px; padding: 4px 7px 4px 4px; font-size: 11px; }
+  .route-stop-label span { min-width: 20px; height: 20px; font-size: 9px; }
+  .route-stop-label.current,
+  .route-stop-label.next { font-size: 13px; }
+  .journey-active .current-station { font-size: 18px; }
 
   .setup-modal { padding: 12px; align-items: end; }
   .setup-sheet { max-height: calc(100vh - 24px); padding: 23px 18px; border-radius: 24px; }

@@ -28,6 +28,8 @@
 
   const subwayLayer = L.layerGroup().addTo(map);
   const highwayLayer = L.layerGroup();
+  const subwayLineLayers = [];
+  const highwayLineLayers = [];
 
   // 라벨 포함된 밝은 베이스 — 게임 분위기를 위해 단독으로 사용하지 않고 어두운 타일 사용
   // ---------------------- Line Drawing ----------------------
@@ -67,7 +69,7 @@
     const latlngs = smoothLatLngs(stationLatLngs);
 
     // 노선도 특유의 밝은 외곽선
-    L.polyline(latlngs, {
+    const outline = L.polyline(latlngs, {
       color: "#ffffff",
       weight: width + 4,
       opacity: 0.92,
@@ -77,7 +79,7 @@
     }).addTo(layer);
 
     // 본체
-    L.polyline(latlngs, {
+    const body = L.polyline(latlngs, {
       color: line.color,
       weight: width,
       opacity: 1,
@@ -86,6 +88,9 @@
       interactive: false,
       className: `line-${lineKey}`,
     }).addTo(layer);
+
+    const collection = data === HIGHWAY_DATA ? highwayLineLayers : subwayLineLayers;
+    collection.push({ outline, body, width });
   }
 
   Object.entries(SUBWAY_DATA.lines).forEach(([key, line]) => drawLine(key, line));
@@ -419,7 +424,7 @@
     const latlngs = smoothLatLngs(stationLatLngs, 16);
     L.polyline(latlngs, {
       color: "#ffffff",
-      weight: 13,
+      weight: 18,
       opacity: 0.94,
       lineCap: "round",
       lineJoin: "round",
@@ -427,13 +432,61 @@
     }).addTo(journeyLayer);
     L.polyline(latlngs, {
       color: "#08a449",
-      weight: 7,
-      opacity: 0.92,
+      weight: 10,
+      opacity: 1,
       lineCap: "round",
       lineJoin: "round",
       interactive: false,
     }).addTo(journeyLayer);
+
+    route.forEach((name, index) => {
+      const station = activeData.stations[name];
+      const endpointClass = index === 0 || index === route.length - 1 ? " endpoint" : "";
+      const positionClass = index % 2 === 0 ? " above" : " below";
+      const labelIcon = L.divIcon({
+        className: "route-label-icon",
+        iconSize: [1, 1],
+        iconAnchor: [0, 0],
+        html: `<div class="route-stop-label${endpointClass}${positionClass}" data-route-index="${index}"><span>${index + 1}</span><strong>${name}</strong></div>`,
+      });
+      L.marker([station.lat, station.lng], {
+        icon: labelIcon,
+        keyboard: false,
+        zIndexOffset: 700 + index,
+      }).addTo(journeyLayer);
+    });
+
     map.fitBounds(L.latLngBounds(stationLatLngs), { padding: [70, 70], maxZoom: 13 });
+  }
+
+  function setJourneyFocus(active, route = []) {
+    document.body.classList.toggle("journey-active", active);
+    const lineLayers = activeMode === "highway" ? highwayLineLayers : subwayLineLayers;
+    lineLayers.forEach(({ outline, body, width }) => {
+      outline.setStyle({ opacity: active ? 0.3 : 0.92, weight: width + 4 });
+      body.setStyle({ opacity: active ? 0.16 : 1, weight: width });
+    });
+
+    activeMarkers.forEach((marker) => {
+      const element = marker.getElement();
+      const dot = element && element.querySelector(".station-marker, .highway-marker");
+      if (dot) dot.classList.remove("selected-route");
+    });
+    route.forEach((name) => {
+      const marker = activeMarkers.get(name);
+      const element = marker && marker.getElement();
+      const dot = element && element.querySelector(".station-marker, .highway-marker");
+      if (dot) dot.classList.add("selected-route");
+    });
+  }
+
+  function updateRouteLabelState() {
+    document.querySelectorAll(".route-stop-label").forEach((label) => {
+      const index = Number(label.dataset.routeIndex);
+      label.classList.toggle("completed", index < state.journeyIndex);
+      label.classList.toggle("current", index === state.journeyIndex);
+      label.classList.toggle("next", index === state.journeyIndex + 1);
+    });
   }
 
   function updateJourneyProgress() {
@@ -441,6 +494,7 @@
     const current = total ? state.journeyIndex + 1 : 0;
     $("#journeyProgress").textContent = `${current} / ${total}`;
     $("#hint").textContent = state.journeyLabel || "여정을 설정하세요";
+    updateRouteLabelState();
   }
 
   function populateStationList() {
@@ -452,6 +506,7 @@
   }
 
   function setActiveMode(mode) {
+    setJourneyFocus(false);
     activeMode = mode;
     document.body.classList.toggle("highway-mode", mode === "highway");
     if (mode === "highway") {
@@ -537,6 +592,7 @@
     trainMarker.setLatLng([start.lat, start.lng]);
     setHud(state.currentStation, start.en);
     drawJourney(route);
+    setJourneyFocus(true, route);
     updateJourneyProgress();
     setTarget(route[1]);
     $("#input").disabled = false;
@@ -576,6 +632,8 @@
 
   function openJourneySetup() {
     if (state.isMoving) return;
+    setJourneyFocus(false);
+    journeyLayer.clearLayers();
     $("#completeModal").classList.add("hidden");
     $("#setupError").textContent = "";
     $("#setupModal").classList.remove("hidden");

@@ -336,6 +336,16 @@ body {
   outline: none;
 }
 
+/* 한글 IME 조합 중에는 브라우저가 관리하는 실제 문자열을 그대로 보여준다.
+   복제 피드백 레이어를 갱신하면 다음 음절 시작 시 앞 음절이 깜빡이거나 사라질 수 있다. */
+.input-wrapper.is-composing .typing-box {
+  visibility: hidden;
+}
+
+.input-wrapper.is-composing #input {
+  color: #173d27;
+}
+
 .input-wrapper:focus-within .unified-input {
   border-color: #079a42;
   background: #fff;

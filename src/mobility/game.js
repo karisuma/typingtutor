@@ -207,6 +207,8 @@
     movedCount: 0,
     startedAt: null, // when the current target started being typed
     firstKeyAt: null,
+    isComposing: false,
+    lastCountedValue: "",
   };
 
   // ---------------------- Helpers ----------------------
@@ -770,6 +772,8 @@
     state.targetStation = name;
     state.startedAt = null;
     state.firstKeyAt = null;
+    state.isComposing = false;
+    state.lastCountedValue = "";
     $("#targetName").textContent = name;
     if (!state.awaitingStart) setHudStation("#nextStation", name);
     $("#inputStatus").textContent = "한글로 입력";
@@ -813,11 +817,31 @@
   }
 
   // ---------------------- Typing Logic ----------------------
-  function handleInput(e) {
+  function scoreCommittedInput(value, target) {
+    const previousChars = Array.from(state.lastCountedValue);
+    const valueChars = Array.from(value);
+    const targetChars = Array.from(target);
+    let commonLength = 0;
+
+    while (
+      commonLength < previousChars.length &&
+      commonLength < valueChars.length &&
+      previousChars[commonLength] === valueChars[commonLength]
+    ) {
+      commonLength++;
+    }
+
+    for (let index = commonLength; index < valueChars.length; index++) {
+      if (valueChars[index] === targetChars[index]) state.typedCorrect++;
+      else state.typedWrong++;
+    }
+    state.lastCountedValue = value;
+  }
+
+  function processCommittedInput(value) {
     if (state.isMoving) return;
     if (!state.targetStation) return;
 
-    const value = e.target.value;
     const target = state.targetStation;
 
     // 처음 키 입력 시각 기록
@@ -825,16 +849,8 @@
       state.firstKeyAt = Date.now();
     }
 
-    // 정확/오타 추적 (마지막 키 기준으로 단순화)
-    if (value.length > 0) {
-      // 마지막으로 추가된 글자가 target과 일치하면 정타
-      const lastIdx = value.length - 1;
-      if (value[lastIdx] === target[lastIdx]) {
-        state.typedCorrect++;
-      } else {
-        state.typedWrong++;
-      }
-    }
+    // 한글 IME의 조합 중간 자모가 아니라 확정된 글자만 집계한다.
+    scoreCommittedInput(value, target);
 
     const valueChars = Array.from(value);
     const targetChars = Array.from(target);
@@ -854,6 +870,34 @@
       moveTrainTo(target);
     }
     updateStats();
+  }
+
+  function handleInput(e) {
+    if (state.isMoving || !state.targetStation) return;
+
+    const value = e.target.value;
+    if (state.firstKeyAt === null && value.length > 0) {
+      state.firstKeyAt = Date.now();
+    }
+
+    // 조합 중에는 투명 입력 위의 복제 텍스트를 다시 만들지 않는다.
+    // 실제 input을 표시해야 다음 음절 조합 시 앞 음절이 사라지지 않는다.
+    if (e.isComposing || state.isComposing) {
+      $("#inputWrapper").classList.add("is-composing");
+      $("#inputStatus").textContent = "입력 중";
+      // 일부 한글 IME는 단어 전체를 입력할 때까지 compositionend를 보내지 않는다.
+      // 정답이 완성된 순간에는 조합 종료를 기다리지 않고 정상 이동을 시작한다.
+      if (value === state.targetStation) {
+        state.isComposing = false;
+        $("#inputWrapper").classList.remove("is-composing");
+        processCommittedInput(value);
+        return;
+      }
+      updateStats();
+      return;
+    }
+
+    processCommittedInput(value);
   }
 
   function moveTrainTo(destName) {
@@ -903,6 +947,16 @@
     setHud(state.currentStation);
     const input = $("#input");
     input.addEventListener("input", handleInput);
+    input.addEventListener("compositionstart", () => {
+      state.isComposing = true;
+      $("#inputWrapper").classList.add("is-composing");
+      $("#inputStatus").textContent = "입력 중";
+    });
+    input.addEventListener("compositionend", () => {
+      state.isComposing = false;
+      $("#inputWrapper").classList.remove("is-composing");
+      processCommittedInput(input.value);
+    });
     input.disabled = true;
     $("#targetName").textContent = "여정을 설정하세요";
     setHudStation("#nextStation", "여정 설정");

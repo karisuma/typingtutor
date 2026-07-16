@@ -232,20 +232,36 @@
     return yiq >= 150 ? "#111" : "#fff";
   }
 
+  function setHudStation(selector, value) {
+    const element = $(selector);
+    element.textContent = value;
+    element.classList.toggle("long-name", Array.from(value).length >= 7);
+  }
+
   function setHud(name) {
-    $("#currentStation").textContent = name || "출발 대기";
+    setHudStation("#currentStation", name || "출발 대기");
+    const hasJourney = state.journey.length > 0;
+    setHudStation("#prevStation", hasJourney
+      ? state.journey[state.journeyIndex - 1] || "출발"
+      : "—");
+    setHudStation("#nextStation", hasJourney
+      ? state.journey[state.journeyIndex + 1] || "종착"
+      : "여정 설정");
 
     const lineInfos = linesAtStation(name);
     const tag = $("#routeTag");
+    const hud = $(".hud");
     if (lineInfos.length > 0) {
       tag.textContent = lineInfos.map((l) => l.name).join(" · ");
       const primary = lineInfos[0];
       tag.style.background = primary.color;
       tag.style.color = readableTextColor(primary.color);
+      hud.style.setProperty("--station-line", primary.color);
     } else {
       tag.textContent = "—";
       tag.style.background = "#4ade80";
       tag.style.color = "#052e16";
+      hud.style.setProperty("--station-line", "#079b45");
     }
 
   }
@@ -502,6 +518,9 @@
     if (mode === "highway") {
       $("#brandTitle").textContent = "고속도로 타이핑";
       $("#typingInstruction").textContent = "지역 이름을 입력해 이동하세요";
+      $("#previousRole").textContent = "← 이전 지역";
+      $("#currentRole").textContent = "현재 지역";
+      $("#nextRole").textContent = "다음 지역 →";
       if (map.hasLayer(subwayLayer)) map.removeLayer(subwayLayer);
       highwayLayer.addTo(map);
       activeData = HIGHWAY_DATA;
@@ -528,6 +547,9 @@
     } else {
       $("#brandTitle").textContent = "메트로 타이핑";
       $("#typingInstruction").textContent = "역 이름을 입력해 이동하세요";
+      $("#previousRole").textContent = "← 이전역";
+      $("#currentRole").textContent = "현재역";
+      $("#nextRole").textContent = "다음역 →";
       if (map.hasLayer(highwayLayer)) map.removeLayer(highwayLayer);
       subwayLayer.addTo(map);
       activeData = SUBWAY_DATA;
@@ -601,7 +623,7 @@
     $("#completeSummary").textContent = `${state.journey[0]}에서 ${state.journey[state.journey.length - 1]}까지 완주했습니다.`;
     $("#input").disabled = true;
     $("#targetName").textContent = "여정 완료";
-    $("#nextStation").textContent = "도착 완료";
+    setHudStation("#nextStation", "종착");
     $("#typingFeedback").innerHTML = '<span class="char-correct">여정 완료</span>';
     $("#inputStatus").textContent = "완주";
     $("#inputWrapper").className = "input-wrapper is-complete";
@@ -610,6 +632,7 @@
 
   function advanceJourney() {
     state.journeyIndex++;
+    setHud(state.currentStation);
     updateJourneyProgress();
     if (state.journeyIndex >= state.journey.length - 1) {
       finishJourney();
@@ -732,7 +755,7 @@
     state.startedAt = null;
     state.firstKeyAt = null;
     $("#targetName").textContent = name;
-    $("#nextStation").textContent = name;
+    setHudStation("#nextStation", name);
     $("#inputStatus").textContent = "한글로 입력";
     $("#inputWrapper").className = "input-wrapper";
     renderTypingFeedback("", name);
@@ -839,7 +862,6 @@
     animateTrainAlong(path, () => {
       state.currentStation = destName;
       state.movedCount++;
-      setHud(state.currentStation);
       updateStats();
       map.panTo([
         activeData.stations[destName].lat,
@@ -858,7 +880,7 @@
     input.addEventListener("input", handleInput);
     input.disabled = true;
     $("#targetName").textContent = "여정을 설정하세요";
-    $("#nextStation").textContent = "여정 설정";
+    setHudStation("#nextStation", "여정 설정");
     $("#typingFeedback").innerHTML = '<span class="char-pending">시작 화면에서 여정을 선택하세요</span>';
 
     let setupMode = "random";

@@ -46,17 +46,20 @@
 
     <div id="map"></div>
 
-    <div class="hud" aria-label="현재 이동 구간">
-      <div class="step-station step-origin">
-        <span class="step-label">현재 출발역</span>
+    <div class="hud" aria-label="지하철역 안내판">
+      <div class="step-station step-previous">
+        <span class="step-label" id="previousRole">← 이전역</span>
+        <span class="station-node" aria-hidden="true"></span>
+        <strong class="prev-station" id="prevStation">출발</strong>
+      </div>
+      <div class="step-station step-current">
+        <span class="current-caption"><span class="route-tag" id="routeTag">노선</span><span class="step-label" id="currentRole">현재역</span></span>
+        <span class="station-node current-node" aria-hidden="true"></span>
         <strong class="current-station" id="currentStation">출발 대기</strong>
       </div>
-      <div class="step-direction" aria-hidden="true">
-        <div class="route-tag" id="routeTag">노선</div>
-        <span class="step-arrow">→</span>
-      </div>
-      <div class="step-station step-destination">
-        <span class="step-label">이번 도착역</span>
+      <div class="step-station step-next">
+        <span class="step-label" id="nextRole">다음역 →</span>
+        <span class="station-node" aria-hidden="true"></span>
         <strong class="next-station" id="nextStation">여정 설정</strong>
       </div>
     </div>

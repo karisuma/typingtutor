@@ -199,6 +199,7 @@
     journeyIndex: 0,
     journeyMode: "random",
     journeyLabel: "",
+    awaitingStart: false,
     segmentMs: 380,
     isMoving: false,
     typedCorrect: 0,
@@ -497,7 +498,7 @@
 
   function updateJourneyProgress() {
     const total = state.journey.length;
-    const current = total ? state.journeyIndex + 1 : 0;
+    const current = total ? (state.awaitingStart ? 0 : state.journeyIndex + 1) : 0;
     $("#journeyProgress").textContent = `${current} / ${total}`;
     $("#hint").textContent = state.journeyLabel || "여정을 설정하세요";
     updateRouteLabelState();
@@ -596,9 +597,10 @@
     state.journey = route.slice();
     state.journeyIndex = 0;
     state.journeyLabel = label;
+    state.awaitingStart = true;
     state.segmentMs = pace === "slow" ? 620 : pace === "fast" ? 220 : 380;
     state.currentStation = route[0];
-    state.targetStation = route[1];
+    state.targetStation = route[0];
     state.isMoving = false;
     resetRunStats();
 
@@ -608,7 +610,10 @@
     drawJourney(route);
     setJourneyFocus(true, route);
     updateJourneyProgress();
-    setTarget(route[1]);
+    setTarget(route[0], { focus: false });
+    $("#typingInstruction").textContent = activeMode === "metro"
+      ? "출발역 이름을 입력해 시작하세요"
+      : "출발 지역 이름을 입력해 시작하세요";
     $("#input").disabled = false;
     $("#setupModal").classList.add("hidden");
     $("#completeModal").classList.add("hidden");
@@ -750,12 +755,12 @@
     );
   }
 
-  function setTarget(name) {
+  function setTarget(name, { focus = true } = {}) {
     state.targetStation = name;
     state.startedAt = null;
     state.firstKeyAt = null;
     $("#targetName").textContent = name;
-    setHudStation("#nextStation", name);
+    if (!state.awaitingStart) setHudStation("#nextStation", name);
     $("#inputStatus").textContent = "한글로 입력";
     $("#inputWrapper").className = "input-wrapper";
     renderTypingFeedback("", name);
@@ -763,7 +768,7 @@
     $("#input").setAttribute("aria-label", `${name} 입력`);
 
     activeMarkers.forEach((marker) => marker.closeTooltip());
-    setTimeout(() => focusCurrentStep(name), 0);
+    if (focus) setTimeout(() => focusCurrentStep(name), 0);
   }
 
   // ---------------------- Stats ----------------------
@@ -841,6 +846,26 @@
   }
 
   function moveTrainTo(destName) {
+    if (state.awaitingStart && destName === state.currentStation) {
+      state.awaitingStart = false;
+      updateJourneyProgress();
+      setHud(state.currentStation);
+      showToast(`${destName}에서 출발합니다`);
+
+      const start = activeData.stations[destName];
+      const next = state.journey[1];
+      if (next) setTarget(next, { focus: false });
+      $("#typingInstruction").textContent = activeMode === "metro"
+        ? "역 이름을 입력해 이동하세요"
+        : "지역 이름을 입력해 이동하세요";
+      map.flyTo([start.lat, start.lng], window.innerWidth <= 720 ? 14 : 15, {
+        animate: true,
+        duration: 0.7,
+      });
+      $("#input").focus();
+      return;
+    }
+
     const path = findPath(state.currentStation, destName);
     if (!path || path.length < 2) {
       // 이미 그 위치

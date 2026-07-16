@@ -741,16 +741,27 @@
     const destination = activeData.stations[targetName];
     if (!origin || !destination) return;
     const compact = window.innerWidth <= 720;
+    const mapSize = map.getSize();
+    const horizontalPadding = Math.round(Math.min(
+      compact ? 68 : 128,
+      mapSize.x * (compact ? 0.18 : 0.16)
+    ));
+    const verticalPadding = compact ? 92 : 108;
+
+    // 이전 카메라 애니메이션과 충돌하지 않도록 현재 이동을 멈춘 뒤,
+    // 현재역과 다음역(큰 역명 라벨 포함)이 모두 보이는 범위로 맞춘다.
+    map.stop();
     map.fitBounds(
       L.latLngBounds([
         [origin.lat, origin.lng],
         [destination.lat, destination.lng],
       ]),
       {
-        paddingTopLeft: compact ? [44, 55] : [90, 85],
-        paddingBottomRight: compact ? [44, 80] : [90, 110],
+        paddingTopLeft: [horizontalPadding, verticalPadding],
+        paddingBottomRight: [horizontalPadding, verticalPadding],
         maxZoom: compact ? 14 : 15,
         animate: true,
+        duration: 0.7,
       }
     );
   }
@@ -852,16 +863,11 @@
       setHud(state.currentStation);
       showToast(`${destName}에서 출발합니다`);
 
-      const start = activeData.stations[destName];
       const next = state.journey[1];
-      if (next) setTarget(next, { focus: false });
+      if (next) setTarget(next);
       $("#typingInstruction").textContent = activeMode === "metro"
         ? "역 이름을 입력해 이동하세요"
         : "지역 이름을 입력해 이동하세요";
-      map.flyTo([start.lat, start.lng], window.innerWidth <= 720 ? 14 : 15, {
-        animate: true,
-        duration: 0.7,
-      });
       $("#input").focus();
       return;
     }
@@ -886,10 +892,6 @@
       state.currentStation = destName;
       state.movedCount++;
       updateStats();
-      map.panTo([
-        activeData.stations[destName].lat,
-        activeData.stations[destName].lng,
-      ]);
       $("#input").disabled = false;
       $("#input").focus();
       advanceJourney();

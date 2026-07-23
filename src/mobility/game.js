@@ -235,6 +235,7 @@
     lastCountedValue: "",
     pendingInputTimer: null,
     startHandoffTimer: null,
+    journeyCountdownTimer: null,
     staleCompositionChar: "",
     staleCompositionUntil: 0,
     suppressBlurProcessing: false,
@@ -612,6 +613,44 @@
     map.fitBounds(L.latLngBounds(stationLatLngs), { padding: [70, 70], maxZoom: 13 });
   }
 
+  function cancelJourneyCountdown() {
+    clearTimeout(state.journeyCountdownTimer);
+    state.journeyCountdownTimer = null;
+    $("#journeyCountdown").classList.add("hidden");
+  }
+
+  function startJourneyCountdown(onComplete) {
+    const countdown = $("#journeyCountdown");
+    const number = $("#journeyCountdownNumber");
+    const values = [3, 2, 1, 0];
+    const stepMs = 700;
+    let index = 0;
+
+    cancelJourneyCountdown();
+    countdown.classList.remove("hidden");
+
+    function showNextNumber() {
+      number.textContent = values[index];
+      number.classList.remove("is-ticking");
+      void number.offsetWidth;
+      number.classList.add("is-ticking");
+
+      if (index < values.length - 1) {
+        index++;
+        state.journeyCountdownTimer = setTimeout(showNextNumber, stepMs);
+        return;
+      }
+
+      state.journeyCountdownTimer = setTimeout(() => {
+        state.journeyCountdownTimer = null;
+        countdown.classList.add("hidden");
+        onComplete();
+      }, stepMs);
+    }
+
+    showNextNumber();
+  }
+
   function setJourneyFocus(active, route = []) {
     document.body.classList.toggle("journey-active", active);
     const lineLayers = activeMode === "highway" ? highwayLineLayers : subwayLineLayers;
@@ -768,10 +807,14 @@
     $("#typingInstruction").textContent = activeMode === "metro"
       ? "출발역 이름을 입력해 시작하세요"
       : "출발 지역 이름을 입력해 시작하세요";
-    $("#input").disabled = false;
+    $("#input").disabled = true;
     $("#setupModal").classList.add("hidden");
     $("#completeModal").classList.add("hidden");
-    $("#input").focus();
+    startJourneyCountdown(() => {
+      focusCurrentStep(state.targetStation);
+      $("#input").disabled = false;
+      $("#input").focus();
+    });
   }
 
   function finishJourney() {
@@ -808,6 +851,7 @@
 
   function openJourneySetup() {
     if (state.isMoving) return;
+    cancelJourneyCountdown();
     setJourneyFocus(false);
     journeyLayer.clearLayers();
     $("#completeModal").classList.add("hidden");

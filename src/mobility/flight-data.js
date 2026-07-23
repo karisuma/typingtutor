@@ -2,7 +2,7 @@
 // 공항 좌표와 항로 구성은 OurAirports / OpenFlights 공개 데이터 구조를 참고해 큐레이션했습니다.
 const FLIGHT_DATA = {
   meta: {
-    routeCount: 6,
+    routeCount: 7,
     airportCount: 12,
   },
   airports: {
@@ -68,6 +68,41 @@ const FLIGHT_DATA = {
       destination: "IST",
       stations: ["DOH_IST_QA", "DOH_IST_SA", "DOH_IST_TR"],
     },
+    WORLD_TOUR: {
+      id: "WORLD_TOUR",
+      name: "세계일주",
+      color: "#38cdf7",
+      stations: [],
+    },
+  },
+  worldTour: {
+    continentOrder: ["asia", "europe", "africa", "northAmerica", "southAmerica", "oceania"],
+    continents: {
+      asia: {
+        label: "아시아",
+        countries: ["WT_ASIA_KR", "WT_ASIA_JP", "WT_ASIA_CN", "WT_ASIA_IN", "WT_ASIA_TH"],
+      },
+      europe: {
+        label: "유럽",
+        countries: ["WT_EU_GB", "WT_EU_FR", "WT_EU_DE", "WT_EU_IT", "WT_EU_ES"],
+      },
+      africa: {
+        label: "아프리카",
+        countries: ["WT_AF_EG", "WT_AF_KE", "WT_AF_NG", "WT_AF_ZA", "WT_AF_MA"],
+      },
+      northAmerica: {
+        label: "북아메리카",
+        countries: ["WT_NA_CA", "WT_NA_US", "WT_NA_MX", "WT_NA_CU", "WT_NA_CR"],
+      },
+      southAmerica: {
+        label: "남아메리카",
+        countries: ["WT_SA_BR", "WT_SA_AR", "WT_SA_CL", "WT_SA_PE", "WT_SA_CO"],
+      },
+      oceania: {
+        label: "오세아니아",
+        countries: ["WT_OC_AU", "WT_OC_NZ", "WT_OC_FJ", "WT_OC_PG", "WT_OC_WS"],
+      },
+    },
   },
   stations: {
     ICN_LAX_KR: { name: "대한민국", en: "South Korea", lat: 37.4602, lng: 126.4407 },
@@ -93,6 +128,36 @@ const FLIGHT_DATA = {
     DOH_IST_QA: { name: "카타르", en: "Qatar", lat: 25.2731, lng: 51.6081 },
     DOH_IST_SA: { name: "사우디아라비아", en: "Saudi Arabia", lat: 29.0, lng: 45.0 },
     DOH_IST_TR: { name: "튀르키예", en: "Türkiye", lat: 41.2753, lng: 28.7519 },
+    WT_ASIA_KR: { name: "대한민국", en: "South Korea", lat: 36.5, lng: 127.8 },
+    WT_ASIA_JP: { name: "일본", en: "Japan", lat: 36.2, lng: 138.3 },
+    WT_ASIA_CN: { name: "중국", en: "China", lat: 35.9, lng: 104.2 },
+    WT_ASIA_IN: { name: "인도", en: "India", lat: 22.9, lng: 78.9 },
+    WT_ASIA_TH: { name: "태국", en: "Thailand", lat: 15.9, lng: 100.9 },
+    WT_EU_GB: { name: "영국", en: "United Kingdom", lat: 54.2, lng: -2.8 },
+    WT_EU_FR: { name: "프랑스", en: "France", lat: 46.2, lng: 2.2 },
+    WT_EU_DE: { name: "독일", en: "Germany", lat: 51.2, lng: 10.5 },
+    WT_EU_IT: { name: "이탈리아", en: "Italy", lat: 41.9, lng: 12.6 },
+    WT_EU_ES: { name: "스페인", en: "Spain", lat: 40.3, lng: -3.7 },
+    WT_AF_EG: { name: "이집트", en: "Egypt", lat: 26.8, lng: 30.8 },
+    WT_AF_KE: { name: "케냐", en: "Kenya", lat: 0.2, lng: 37.9 },
+    WT_AF_NG: { name: "나이지리아", en: "Nigeria", lat: 9.1, lng: 8.7 },
+    WT_AF_ZA: { name: "남아프리카공화국", en: "South Africa", lat: -30.6, lng: 22.9 },
+    WT_AF_MA: { name: "모로코", en: "Morocco", lat: 31.8, lng: -7.1 },
+    WT_NA_CA: { name: "캐나다", en: "Canada", lat: 56.1, lng: -106.3 },
+    WT_NA_US: { name: "미국", en: "United States", lat: 39.8, lng: -98.6 },
+    WT_NA_MX: { name: "멕시코", en: "Mexico", lat: 23.6, lng: -102.6 },
+    WT_NA_CU: { name: "쿠바", en: "Cuba", lat: 21.5, lng: -79.5 },
+    WT_NA_CR: { name: "코스타리카", en: "Costa Rica", lat: 9.8, lng: -83.8 },
+    WT_SA_BR: { name: "브라질", en: "Brazil", lat: -10.8, lng: -52.9 },
+    WT_SA_AR: { name: "아르헨티나", en: "Argentina", lat: -38.4, lng: -63.6 },
+    WT_SA_CL: { name: "칠레", en: "Chile", lat: -35.7, lng: -71.5 },
+    WT_SA_PE: { name: "페루", en: "Peru", lat: -9.2, lng: -75.0 },
+    WT_SA_CO: { name: "콜롬비아", en: "Colombia", lat: 4.6, lng: -74.3 },
+    WT_OC_AU: { name: "호주", en: "Australia", lat: -25.3, lng: 133.8 },
+    WT_OC_NZ: { name: "뉴질랜드", en: "New Zealand", lat: -41.0, lng: 174.9 },
+    WT_OC_FJ: { name: "피지", en: "Fiji", lat: -17.7, lng: 178.1 },
+    WT_OC_PG: { name: "파푸아뉴기니", en: "Papua New Guinea", lat: -6.3, lng: 143.9 },
+    WT_OC_WS: { name: "사모아", en: "Samoa", lat: -13.8, lng: -172.1 },
   },
 };
 

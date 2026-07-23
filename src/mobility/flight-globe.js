@@ -7,6 +7,7 @@
   const sphere = document.createElement("div");
   sphere.className = "flight-globe-sphere";
   root.appendChild(sphere);
+  const worldBounds = L.latLngBounds([[-82, -179.9], [82, 179.9]]);
 
   const globeMap = L.map(sphere, {
     attributionControl: false,
@@ -21,18 +22,48 @@
     minZoom: 1.55,
     maxZoom: 1.55,
     worldCopyJump: false,
-  }).setView([28, 180], 1.55);
+    maxBounds: worldBounds,
+    maxBoundsViscosity: 1,
+  }).setView([20, 0], 1.55);
 
   L.tileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    { maxZoom: 18 }
+    { maxZoom: 18, noWrap: true, bounds: worldBounds }
   ).addTo(globeMap);
   L.tileLayer(
     "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-    { maxZoom: 18, opacity: 0.92 }
+    { maxZoom: 18, opacity: 0.92, noWrap: true, bounds: worldBounds }
   ).addTo(globeMap);
 
   const routeLayer = L.layerGroup().addTo(globeMap);
+
+  function normalizeLongitude(lng) {
+    return ((lng + 540) % 360) - 180;
+  }
+
+  function splitAtDateLine(points) {
+    const result = [];
+    let current = [[points[0][0], normalizeLongitude(points[0][1])]];
+
+    for (let index = 1; index < points.length; index++) {
+      const previous = points[index - 1];
+      const next = points[index];
+      const lower = Math.min(previous[1], next[1]);
+      const upper = Math.max(previous[1], next[1]);
+      const crossing = Math.floor((lower + 180) / 360) * 360 + 180;
+      if (crossing > lower && crossing < upper) {
+        const ratio = (crossing - previous[1]) / (next[1] - previous[1]);
+        const crossingLat = previous[0] + (next[0] - previous[0]) * ratio;
+        const increasing = next[1] > previous[1];
+        current.push([crossingLat, increasing ? 180 : -180]);
+        result.push(current);
+        current = [[crossingLat, increasing ? -180 : 180]];
+      }
+      current.push([next[0], normalizeLongitude(next[1])]);
+    }
+    result.push(current);
+    return result.filter((segment) => segment.length >= 2);
+  }
 
   function flightArc(from, to) {
     const points = [];
@@ -46,7 +77,7 @@
         from.lng + (targetLng - from.lng) * progress,
       ]);
     }
-    return points;
+    return splitAtDateLine(points);
   }
 
   function pointIcon(kind, label) {
@@ -74,23 +105,25 @@
       const from = FLIGHT_DATA.stations[route[index]];
       const to = FLIGHT_DATA.stations[route[index + 1]];
       if (!from || !to) continue;
-      L.polyline(flightArc(from, to), {
-        color: "#e4fbff",
-        weight: 8,
-        opacity: 0.72,
-        lineCap: "round",
-        lineJoin: "round",
-        interactive: false,
-      }).addTo(routeLayer);
-      L.polyline(flightArc(from, to), {
-        color: line.color || "#38cdf7",
-        weight: 3,
-        opacity: 1,
-        dashArray: "5 10",
-        lineCap: "round",
-        lineJoin: "round",
-        interactive: false,
-      }).addTo(routeLayer);
+      flightArc(from, to).forEach((arc) => {
+        L.polyline(arc, {
+          color: "#e4fbff",
+          weight: 8,
+          opacity: 0.72,
+          lineCap: "round",
+          lineJoin: "round",
+          interactive: false,
+        }).addTo(routeLayer);
+        L.polyline(arc, {
+          color: line.color || "#38cdf7",
+          weight: 3,
+          opacity: 1,
+          dashArray: "5 10",
+          lineCap: "round",
+          lineJoin: "round",
+          interactive: false,
+        }).addTo(routeLayer);
+      });
     }
 
     route.forEach((id, index) => {
@@ -102,14 +135,16 @@
       }).addTo(routeLayer);
     });
 
-    addAirport(FLIGHT_DATA.airports[line.origin]);
-    addAirport(FLIGHT_DATA.airports[line.destination]);
+    if (line.origin && line.destination) {
+      addAirport(FLIGHT_DATA.airports[line.origin]);
+      addAirport(FLIGHT_DATA.airports[line.destination]);
+    }
     L.marker([FLIGHT_DATA.stations[route[0]].lat, FLIGHT_DATA.stations[route[0]].lng], {
       icon: pointIcon("plane", "✈"),
       keyboard: false,
     }).addTo(routeLayer);
 
-    globeMap.setView([28, 180], 1.55, { animate: false });
+    globeMap.setView([20, 0], 1.55, { animate: false });
     setTimeout(() => globeMap.invalidateSize(), 0);
   }
 

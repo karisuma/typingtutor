@@ -112,7 +112,7 @@
 
         <p class="setup-section-label">1. 무엇으로 연습할까요?</p>
         <div class="network-choice" role="radiogroup" aria-label="플레이 네트워크">
-          <button class="network-card active" type="button" data-network="metro" aria-pressed="true">
+          <button class="network-card" type="button" data-network="metro" aria-pressed="false">
             <span class="network-icon metro-icon">🚇</span>
             <span class="network-copy">
               <b>수도권 전철</b>
@@ -123,7 +123,7 @@
             <span class="network-icon highway-icon">🛣️</span>
             <b>고속도로</b>
           </button>
-          <button class="network-card flight-card" type="button" data-network="flight" aria-pressed="false">
+          <button class="network-card flight-card active" type="button" data-network="flight" aria-pressed="true">
             <span class="network-icon flight-icon">✈</span>
             <span class="network-copy">
               <b>글로벌 비행</b>
@@ -132,13 +132,29 @@
           </button>
         </div>
 
-        <p class="setup-section-label" id="setupModeLabel">2. 어떻게 연습할까요?</p>
+        <p class="setup-section-label" id="setupModeLabel">2. 세계일주 설정</p>
         <div class="mode-tabs" role="tablist" aria-label="여정 선택 방식">
           <button class="mode-tab active" type="button" data-mode="random" role="tab" aria-selected="true">랜덤으로 시작</button>
           <button class="mode-tab" type="button" data-mode="custom" role="tab" aria-selected="false">출발·도착 지정</button>
         </div>
 
         <form id="setupForm">
+          <div id="flightModeTabs" class="flight-mode-tabs" role="tablist" aria-label="비행 연습 방식">
+            <button class="flight-mode-tab active" type="button" data-flight-mode="world-tour" role="tab" aria-selected="true">🌍 세계일주</button>
+            <button class="flight-mode-tab" type="button" data-flight-mode="mission" role="tab" aria-selected="false">항로 미션</button>
+          </div>
+
+          <div id="worldTourOptions" class="setup-panel world-tour-options">
+            <div class="world-tour-title">
+              <span>기본 모드</span>
+              <strong>세계일주</strong>
+            </div>
+            <p>아시아·유럽·아프리카·북아메리카·남아메리카·오세아니아에서 각각 무작위로 <b>2~5개 나라</b>를 골라 비행합니다.</p>
+            <div class="world-tour-continent-list" aria-label="포함 대륙">
+              <span>아시아</span><span>유럽</span><span>아프리카</span><span>북아메리카</span><span>남아메리카</span><span>오세아니아</span>
+            </div>
+          </div>
+
           <div id="flightOptions" class="setup-panel flight-options hidden">
             <label class="field">
               <span>비행 미션 선택</span>

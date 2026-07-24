@@ -1228,6 +1228,8 @@ body {
   padding: 34px 38px 36px;
   border-color: var(--setup-border);
   border-radius: 30px;
+  /* 비행 모드의 밝은 기본 글자색이 흰 설정 창에 상속되지 않도록 고정한다. */
+  color: #193126;
   box-shadow: 0 26px 80px rgba(25, 72, 40, 0.2);
 }
 
@@ -1245,6 +1247,7 @@ body {
 }
 
 .setup-heading h1 {
+  color: #123326;
   font-size: 36px;
   line-height: 1.15;
   letter-spacing: -0.055em;
@@ -1252,7 +1255,7 @@ body {
 
 .setup-heading p {
   margin-top: 10px;
-  color: var(--setup-muted);
+  color: #42564b;
   font-size: 17px;
   line-height: 1.5;
 }

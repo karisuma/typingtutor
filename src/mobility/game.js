@@ -325,6 +325,8 @@
 
   // 선택된 여정을 지도 위에 강조한다.
   const journeyLayer = L.layerGroup().addTo(map);
+  // 현재 목적지는 다른 경유지 표기보다 항상 위에 올린다.
+  const journeyRouteLabelMarkers = new Map();
 
   // ---------------------- Station Markers ----------------------
   const stationMarkers = new Map(); // name -> leaflet marker
@@ -1230,6 +1232,7 @@
 
   function drawJourney(route) {
     journeyLayer.clearLayers();
+    journeyRouteLabelMarkers.clear();
     const isFlight = activeMode === "flight";
     const rawStationLatLngs = route.map((name) => {
       const station = activeData.stations[name];
@@ -1286,11 +1289,12 @@
         iconAnchor: [0, 0],
         html: `<div class="route-stop-label${isFlight ? " flight-stop-label" : ""}${endpointClass}${positionClass}" data-route-index="${index}" style="--route-color:${routeColor};--route-text:${routeText}"><span>${index + 1}</span><strong>${stationLabel(name)}</strong></div>`,
       });
-      L.marker(stationLatLngs[index], {
+      const routeLabelMarker = L.marker(stationLatLngs[index], {
         icon: labelIcon,
         keyboard: false,
         zIndexOffset: 1400 + index,
       }).addTo(journeyLayer);
+      journeyRouteLabelMarkers.set(index, routeLabelMarker);
     });
 
     if (isFlight) {
@@ -1412,6 +1416,16 @@
       label.classList.toggle("completed", index < targetIndex);
       label.classList.toggle("current", index === targetIndex);
       label.classList.toggle("next", index === targetIndex + 1);
+    });
+    // Leaflet의 마커는 위도와 생성 순서에 따라 겹침 순서가 달라진다.
+    // 현재 목적지에는 충분히 큰 z-index를 주어 어떤 경유지에도 가려지지 않게 한다.
+    journeyRouteLabelMarkers.forEach((marker, index) => {
+      const zIndexOffset = index === targetIndex
+        ? 300000
+        : index === targetIndex + 1
+          ? 200000
+          : 100000 + index;
+      marker.setZIndexOffset(zIndexOffset);
     });
     state.journey.forEach((name, index) => {
       const marker = activeMarkers.get(name);
@@ -2119,9 +2133,8 @@
     scheduleInputProcessing(e.target);
   }
 
-  function shouldRestoreFlightTypingFocus(event, input) {
+  function shouldRestoreTypingFocus(event, input) {
     if (
-      activeMode !== "flight" ||
       !state.targetStation ||
       state.isMoving ||
       input.disabled ||
@@ -2221,7 +2234,7 @@
     const input = $("#input");
     input.addEventListener("input", handleInput);
     document.addEventListener("keydown", (event) => {
-      if (!shouldRestoreFlightTypingFocus(event, input)) return;
+      if (!shouldRestoreTypingFocus(event, input)) return;
       if (document.activeElement !== input) input.focus({ preventScroll: true });
     }, true);
     input.addEventListener("compositionstart", () => {

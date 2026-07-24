@@ -57,6 +57,7 @@
   const subwayLayer = L.layerGroup().addTo(map);
   const highwayLayer = L.layerGroup();
   const flightLayer = L.layerGroup();
+  const flightGeographyLayer = L.layerGroup();
   const subwayLineLayers = [];
   const highwayLineLayers = [];
   const flightLineLayers = [];
@@ -304,11 +305,12 @@
 
   const flightMarkers = new Map();
   Object.entries(FLIGHT_DATA.stations).forEach(([name, station]) => {
+    const markerClass = station.kind === "water" ? "flight-water-marker" : "flight-airspace-marker";
     const icon = L.divIcon({
       className: "",
       iconSize: [12, 12],
       iconAnchor: [6, 6],
-      html: '<div class="flight-airspace-marker"></div>',
+      html: `<div class="${markerClass}"></div>`,
     });
     const marker = L.marker([station.lat, station.lng], { icon, keyboard: false })
       .addTo(flightLayer)
@@ -346,6 +348,157 @@
   let activeMarkers = stationMarkers;
   let activeTransferStations = transferStations;
   let setupMode = "world-tour";
+
+  // 현재 타이핑 대상의 실제 국가 경계는 필요할 때만 불러와 캐시한다.
+  // Esri World Countries 일반화 경계는 현재 사용 중인 위성/지명 타일과 같은 제공처다.
+  const COUNTRY_BOUNDARY_SERVICE =
+    "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Countries_(Generalized)/FeatureServer/0/query";
+  const countryBoundaryCache = new Map();
+  const continentByCountryName = new Map();
+  let flightHighlightRequest = 0;
+
+  Object.values(FLIGHT_DATA.worldTour.continents).forEach((continent) => {
+    continent.countries.forEach((id) => {
+      const station = FLIGHT_DATA.stations[id];
+      if (station) continentByCountryName.set(station.name, continent.label);
+    });
+  });
+
+  function countryBoundaryUrl(iso2) {
+    const where = encodeURIComponent(`ISO='${iso2}'`);
+    return `${COUNTRY_BOUNDARY_SERVICE}?where=${where}&outFields=ISO,COUNTRY&returnGeometry=true&f=geojson`;
+  }
+
+  function loadCountryBoundary(iso2) {
+    if (!iso2) return Promise.resolve(null);
+    if (!countryBoundaryCache.has(iso2)) {
+      countryBoundaryCache.set(
+        iso2,
+        fetch(countryBoundaryUrl(iso2))
+          .then((response) => response.ok ? response.json() : null)
+          .then((data) => data?.features?.length ? data : null)
+          .catch(() => null)
+      );
+    }
+    return countryBoundaryCache.get(iso2);
+  }
+
+  function flightStudyIcon(station) {
+    const type = station.kind === "water" ? "해역" : "나라";
+    return L.divIcon({
+      className: "",
+      iconSize: [1, 1],
+      iconAnchor: [0, 0],
+      html: `<div class="flight-geography-label"><span>${type}</span><strong>${station.name}</strong></div>`,
+    });
+  }
+
+  function updateFlightStudy(name) {
+    const card = $("#geoStudy");
+    const station = FLIGHT_DATA.stations[name];
+    if (!card || activeMode !== "flight" || !station) {
+      card?.classList.add("hidden");
+      return;
+    }
+    const isWater = station.kind === "water";
+    const continent = continentByCountryName.get(station.name) || "세계 주요 지역";
+    $("#geoStudyCategory").textContent = isWater ? "해역 · 세계 지리" : `나라 · ${continent}`;
+    $("#geoStudyName").textContent = station.name;
+    $("#geoStudyEnglish").textContent = station.en || station.name;
+    $("#geoStudyDescription").textContent = isWater
+      ? station.description || "비행 경로가 지나는 주요 해역"
+      : `${continent}의 나라 · 지도에서 실제 국경선과 위치를 확인하세요.`;
+    card.classList.remove("hidden");
+
+    $("#currentRole").textContent = isWater ? "현재 해역" : "현재 영공";
+    $("#nextRole").textContent = isWater ? "다음 해역 →" : "다음 영공 →";
+    $("#afterNextRole").textContent = isWater ? "다다음 해역 →" : "다다음 영공 →";
+  }
+
+  function clearFlightGeography() {
+    flightHighlightRequest++;
+    flightGeographyLayer.clearLayers();
+    $("#geoStudy")?.classList.add("hidden");
+  }
+
+  function focusFlightBounds(bounds, maxZoom) {
+    if (!bounds?.isValid()) return;
+    const compact = window.innerWidth <= 720;
+    const size = map.getSize();
+    const horizontalPadding = Math.round(Math.min(compact ? 56 : 138, size.x * (compact ? 0.16 : 0.17)));
+    map.stop();
+    map.flyToBounds(bounds, {
+      paddingTopLeft: [horizontalPadding, compact ? 150 : 128],
+      paddingBottomRight: [horizontalPadding, compact ? 104 : 112],
+      maxZoom,
+      animate: true,
+      duration: 0.7,
+    });
+  }
+
+  async function highlightFlightGeography(name, { focus = false } = {}) {
+    const station = FLIGHT_DATA.stations[name];
+    if (!station) return;
+    const request = ++flightHighlightRequest;
+    flightGeographyLayer.clearLayers();
+
+    const addLabel = () => L.marker([station.lat, station.lng], {
+      icon: flightStudyIcon(station),
+      keyboard: false,
+      interactive: false,
+      zIndexOffset: 2400,
+    }).addTo(flightGeographyLayer);
+
+    if (station.kind === "water") {
+      const waterArea = L.circle([station.lat, station.lng], {
+        radius: (station.radiusKm || 900) * 1000,
+        color: "#8cf4ff",
+        weight: 3,
+        opacity: 0.94,
+        dashArray: "7 8",
+        fillColor: "#1fc9ff",
+        fillOpacity: 0.2,
+        interactive: false,
+        className: "flight-water-highlight",
+      }).addTo(flightGeographyLayer);
+      addLabel();
+      if (focus) focusFlightBounds(waterArea.getBounds(), station.focusZoom || 4.3);
+      return;
+    }
+
+    const iso2 = station.iso2 || FLIGHT_DATA.countryIso2?.[station.name];
+    const geojson = await loadCountryBoundary(iso2);
+    if (request !== flightHighlightRequest) return;
+
+    let bounds;
+    if (geojson) {
+      const boundary = L.geoJSON(geojson, {
+        style: {
+          color: "#a7f7ff",
+          weight: 3.5,
+          opacity: 1,
+          dashArray: "8 5",
+          fillColor: "#17c9ff",
+          fillOpacity: 0.22,
+          className: "flight-country-highlight",
+        },
+        interactive: false,
+      }).addTo(flightGeographyLayer);
+      bounds = boundary.getBounds();
+    } else {
+      const fallback = L.circle([station.lat, station.lng], {
+        radius: 360000,
+        color: "#a7f7ff",
+        weight: 3,
+        fillColor: "#17c9ff",
+        fillOpacity: 0.18,
+        interactive: false,
+      }).addTo(flightGeographyLayer);
+      bounds = fallback.getBounds();
+    }
+    addLabel();
+    if (focus) focusFlightBounds(bounds, station.focusZoom || 6.3);
+  }
 
   // ---------------------- Train Sprite ----------------------
   const trainIcon = L.divIcon({
@@ -433,7 +586,7 @@
     if (activeMode === "flight") {
       return starting
         ? "출발 영공 이름을 입력해 이륙하세요"
-        : "지나는 나라·지역 이름을 입력해 비행하세요";
+        : "지나는 나라·바다 이름을 입력해 비행하세요";
     }
     if (activeMode === "highway") {
       return starting ? "출발 지역 이름을 입력해 시작하세요" : "지역 이름을 입력해 이동하세요";
@@ -750,10 +903,24 @@
       // 국가를 섞지 않고, 대륙의 진입·이탈 방향에 맞춘 인접 국가 묶음을 사용한다.
       // 따라서 매번 2~5개 나라를 고르면서도 경로가 되돌아가거나 교차하지 않는다.
       const countries = (continent.routeGroups?.[count] || continent.countries.slice(0, count)).slice();
-      return { label: continent.label, countries };
+      return { key, label: continent.label, countries };
     });
-    const route = plan.flatMap(({ countries }) => countries);
-    const label = `세계일주 · ${plan.map(({ label: continent, countries }) => `${continent} ${countries.length}개`).join(" · ")}`;
+    const route = [];
+    plan.forEach(({ countries }) => {
+      const previousCountry = route.at(-1);
+      if (previousCountry) {
+        route.push(...(FLIGHT_DATA.worldTour.routeWaterways?.[`${previousCountry}|${countries[0]}`] || []));
+      }
+      countries.forEach((country, index) => {
+        route.push(country);
+        const nextCountry = countries[index + 1];
+        if (nextCountry) {
+          route.push(...(FLIGHT_DATA.worldTour.routeWaterways?.[`${country}|${nextCountry}`] || []));
+        }
+      });
+    });
+    const waterCount = route.filter((id) => FLIGHT_DATA.stations[id]?.kind === "water").length;
+    const label = `세계일주 · ${plan.map(({ label: continent, countries }) => `${continent} ${countries.length}개`).join(" · ")} · 해역 ${waterCount}곳`;
     return { route, label };
   }
 
@@ -897,7 +1064,7 @@
 
     activeMarkers.forEach((marker) => {
       const element = marker.getElement();
-      const dot = element && element.querySelector(".station-marker, .highway-marker, .flight-airspace-marker");
+      const dot = element && element.querySelector(".station-marker, .highway-marker, .flight-airspace-marker, .flight-water-marker");
       if (dot) {
         dot.classList.remove("selected-route");
         dot.style.removeProperty("--route-color");
@@ -906,7 +1073,7 @@
     route.forEach((name, index) => {
       const marker = activeMarkers.get(name);
       const element = marker && marker.getElement();
-      const dot = element && element.querySelector(".station-marker, .highway-marker, .flight-airspace-marker");
+      const dot = element && element.querySelector(".station-marker, .highway-marker, .flight-airspace-marker, .flight-water-marker");
       if (dot) {
         const lineKey = state.journeyLines[index] || state.journeyLines[index - 1];
         dot.style.setProperty("--route-color", routeLineColor(lineKey));
@@ -966,6 +1133,8 @@
       if (map.hasLayer(subwayLayer)) map.removeLayer(subwayLayer);
       if (map.hasLayer(highwayLayer)) map.removeLayer(highwayLayer);
       flightLayer.addTo(map);
+      flightGeographyLayer.addTo(map);
+      clearFlightGeography();
       window.FlightGlobe?.show();
       activeData = FLIGHT_DATA;
       activeGraph = FLIGHT_GRAPH;
@@ -975,7 +1144,7 @@
       $("#brandIcon").textContent = "✈";
       $("#brandTitle").textContent = "타이핑101 플라이트";
       $("#movedLabel").textContent = "통과 영공";
-      $("#typingInstruction").textContent = "국가 이름을 입력해 비행하세요";
+      $("#typingInstruction").textContent = "나라·바다 이름을 입력해 비행하세요";
       $("#previousRole").textContent = "← 이전 영공";
       $("#currentRole").textContent = "현재 영공";
       $("#nextRole").textContent = "다음 영공 →";
@@ -1002,6 +1171,8 @@
       if (map.hasLayer(flightReferenceLayer)) map.removeLayer(flightReferenceLayer);
       lightBaseLayer.addTo(map);
       if (map.hasLayer(flightLayer)) map.removeLayer(flightLayer);
+      if (map.hasLayer(flightGeographyLayer)) map.removeLayer(flightGeographyLayer);
+      clearFlightGeography();
       window.FlightGlobe?.hide();
       $("#brandIcon").textContent = "🛣️";
       $("#brandTitle").textContent = "타이핑101";
@@ -1050,6 +1221,8 @@
       if (map.hasLayer(flightReferenceLayer)) map.removeLayer(flightReferenceLayer);
       lightBaseLayer.addTo(map);
       if (map.hasLayer(flightLayer)) map.removeLayer(flightLayer);
+      if (map.hasLayer(flightGeographyLayer)) map.removeLayer(flightGeographyLayer);
+      clearFlightGeography();
       window.FlightGlobe?.hide();
       $("#brandIcon").textContent = "🚇";
       $("#brandTitle").textContent = "타이핑101";
@@ -1280,6 +1453,12 @@
       : targetName;
     const destination = activeData.stations[focusedTarget];
     if (!origin || !destination) return;
+    if (activeMode === "flight") {
+      window.FlightGlobe?.focusSegment(state.currentStation, targetName);
+      highlightFlightGeography(targetName, { focus: true });
+      return;
+    }
+
     const compact = window.innerWidth <= 720;
     const mapSize = map.getSize();
     const horizontalPadding = Math.round(Math.min(
@@ -1294,9 +1473,6 @@
     const flightSegment = activeMode === "flight"
       ? railSegmentPath(state.currentStation, focusedTarget, state.journeyLines[state.journeyIndex])
       : null;
-    if (activeMode === "flight") {
-      window.FlightGlobe?.focusSegment(state.currentStation, focusedTarget);
-    }
     const focusPoints = flightSegment?.length >= 2
       ? flightSegment
       : [[origin.lat, origin.lng], [destination.lat, destination.lng]];
@@ -1305,7 +1481,7 @@
       {
         paddingTopLeft: [horizontalPadding, verticalPadding],
         paddingBottomRight: [horizontalPadding, verticalPadding],
-        maxZoom: activeMode === "flight" ? 4 : compact ? 14 : 15,
+        maxZoom: compact ? 14 : 15,
         animate: true,
         duration: 0.7,
       }
@@ -1331,6 +1507,10 @@
     $("#input").setAttribute("aria-label", `${targetLabel} 입력`);
 
     activeMarkers.forEach((marker) => marker.closeTooltip());
+    if (activeMode === "flight") {
+      updateFlightStudy(name);
+      highlightFlightGeography(name);
+    }
     if (focus) setTimeout(() => focusCurrentStep(name), 0);
   }
 

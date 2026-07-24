@@ -747,10 +747,9 @@
     const plan = FLIGHT_DATA.worldTour.continentOrder.map((key) => {
       const continent = FLIGHT_DATA.worldTour.continents[key];
       const count = 2 + Math.floor(Math.random() * 4);
-      const countries = continent.countries
-        .slice()
-        .sort(() => Math.random() - 0.5)
-        .slice(0, count);
+      // 국가를 섞지 않고, 대륙의 진입·이탈 방향에 맞춘 인접 국가 묶음을 사용한다.
+      // 따라서 매번 2~5개 나라를 고르면서도 경로가 되돌아가거나 교차하지 않는다.
+      const countries = (continent.routeGroups?.[count] || continent.countries.slice(0, count)).slice();
       return { label: continent.label, countries };
     });
     const route = plan.flatMap(({ countries }) => countries);

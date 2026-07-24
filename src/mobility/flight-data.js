@@ -76,31 +76,70 @@ const FLIGHT_DATA = {
     },
   },
   worldTour: {
-    continentOrder: ["asia", "europe", "africa", "northAmerica", "southAmerica", "oceania"],
+    // 대륙을 한 방향으로 차례로 잇는 한 바퀴 동선입니다.
+    // 각 묶음은 입·출구 방향까지 고려한 이웃 국가 순서이므로,
+    // 무작위 순서 섞기로 생기던 지그재그 항로를 만들지 않습니다.
+    continentOrder: ["asia", "europe", "northAmerica", "southAmerica", "africa", "oceania"],
     continents: {
       asia: {
         label: "아시아",
         countries: ["WT_ASIA_KR", "WT_ASIA_JP", "WT_ASIA_CN", "WT_ASIA_IN", "WT_ASIA_TH"],
+        routeGroups: {
+          2: ["WT_ASIA_TH", "WT_ASIA_IN"],
+          3: ["WT_ASIA_CN", "WT_ASIA_TH", "WT_ASIA_IN"],
+          4: ["WT_ASIA_KR", "WT_ASIA_CN", "WT_ASIA_TH", "WT_ASIA_IN"],
+          5: ["WT_ASIA_JP", "WT_ASIA_KR", "WT_ASIA_CN", "WT_ASIA_TH", "WT_ASIA_IN"],
+        },
       },
       europe: {
         label: "유럽",
         countries: ["WT_EU_GB", "WT_EU_FR", "WT_EU_DE", "WT_EU_IT", "WT_EU_ES"],
+        routeGroups: {
+          2: ["WT_EU_FR", "WT_EU_GB"],
+          3: ["WT_EU_IT", "WT_EU_FR", "WT_EU_GB"],
+          4: ["WT_EU_IT", "WT_EU_DE", "WT_EU_FR", "WT_EU_GB"],
+          5: ["WT_EU_IT", "WT_EU_DE", "WT_EU_FR", "WT_EU_ES", "WT_EU_GB"],
+        },
       },
       africa: {
         label: "아프리카",
         countries: ["WT_AF_EG", "WT_AF_KE", "WT_AF_NG", "WT_AF_ZA", "WT_AF_MA"],
+        routeGroups: {
+          2: ["WT_AF_NG", "WT_AF_ZA"],
+          3: ["WT_AF_NG", "WT_AF_KE", "WT_AF_ZA"],
+          4: ["WT_AF_NG", "WT_AF_EG", "WT_AF_KE", "WT_AF_ZA"],
+          5: ["WT_AF_NG", "WT_AF_MA", "WT_AF_EG", "WT_AF_KE", "WT_AF_ZA"],
+        },
       },
       northAmerica: {
         label: "북아메리카",
         countries: ["WT_NA_CA", "WT_NA_US", "WT_NA_MX", "WT_NA_CU", "WT_NA_CR"],
+        routeGroups: {
+          2: ["WT_NA_CA", "WT_NA_US"],
+          3: ["WT_NA_CA", "WT_NA_US", "WT_NA_MX"],
+          4: ["WT_NA_CA", "WT_NA_US", "WT_NA_MX", "WT_NA_CR"],
+          5: ["WT_NA_CA", "WT_NA_US", "WT_NA_MX", "WT_NA_CR", "WT_NA_CU"],
+        },
       },
       southAmerica: {
         label: "남아메리카",
         countries: ["WT_SA_BR", "WT_SA_AR", "WT_SA_CL", "WT_SA_PE", "WT_SA_CO"],
+        routeGroups: {
+          2: ["WT_SA_CO", "WT_SA_BR"],
+          3: ["WT_SA_CO", "WT_SA_PE", "WT_SA_BR"],
+          4: ["WT_SA_CO", "WT_SA_PE", "WT_SA_AR", "WT_SA_BR"],
+          5: ["WT_SA_CO", "WT_SA_PE", "WT_SA_CL", "WT_SA_AR", "WT_SA_BR"],
+        },
       },
       oceania: {
         label: "오세아니아",
         countries: ["WT_OC_AU", "WT_OC_NZ", "WT_OC_FJ", "WT_OC_PG", "WT_OC_WS"],
+        routeGroups: {
+          2: ["WT_OC_AU", "WT_OC_NZ"],
+          3: ["WT_OC_AU", "WT_OC_PG", "WT_OC_NZ"],
+          4: ["WT_OC_AU", "WT_OC_PG", "WT_OC_FJ", "WT_OC_NZ"],
+          5: ["WT_OC_AU", "WT_OC_PG", "WT_OC_FJ", "WT_OC_NZ", "WT_OC_WS"],
+        },
       },
     },
   },

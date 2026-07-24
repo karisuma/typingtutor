@@ -1542,7 +1542,7 @@
       activeTransferStations = new Set();
       setupMode = "world-tour";
       $("#brandIcon").textContent = "✈";
-      $("#brandTitle").textContent = "코딩101 여행가자 타자연습";
+      $("#brandTitle").textContent = "제주코딩101 여행가자 타자연습";
       $("#movedLabel").textContent = "통과 영공";
       $("#typingInstruction").textContent = "나라·바다 이름을 입력해 비행기로 이동하세요";
       $("#previousRole").textContent = "← 이전 영공";
@@ -1587,7 +1587,7 @@
       activeMarkers = jejuMarkers;
       activeTransferStations = jejuTransferStations;
       $("#brandIcon").textContent = "🏇";
-      $("#brandTitle").textContent = "코딩101 여행가자 타자연습";
+      $("#brandTitle").textContent = "제주코딩101 여행가자 타자연습";
       $("#movedLabel").textContent = "방문 명소";
       $("#typingInstruction").textContent = JEJU_ACTIVE_DATA.meta.sponsoredDisclosure
         ? "명소 이름을 입력해 말을 타고 여행하세요 · 광고 포함"
@@ -1639,7 +1639,7 @@
       clearFlightGeography();
       window.FlightGlobe?.hide();
       $("#brandIcon").textContent = "🚗";
-      $("#brandTitle").textContent = "코딩101 여행가자 타자연습";
+      $("#brandTitle").textContent = "제주코딩101 여행가자 타자연습";
       $("#movedLabel").textContent = "이동한 지역";
       $("#typingInstruction").textContent = "지역 이름을 입력해 자동차로 이동하세요";
       $("#previousRole").textContent = "← 이전 지역";
@@ -1692,7 +1692,7 @@
       clearFlightGeography();
       window.FlightGlobe?.hide();
       $("#brandIcon").textContent = "🚇";
-      $("#brandTitle").textContent = "코딩101 여행가자 타자연습";
+      $("#brandTitle").textContent = "제주코딩101 여행가자 타자연습";
       $("#movedLabel").textContent = "이동한 역";
       $("#typingInstruction").textContent = "역 이름을 입력해 전철로 이동하세요";
       $("#previousRole").textContent = "← 이전역";

@@ -1998,6 +1998,31 @@
     scheduleInputProcessing(e.target);
   }
 
+  function shouldRestoreFlightTypingFocus(event, input) {
+    if (
+      activeMode !== "flight" ||
+      !state.targetStation ||
+      state.isMoving ||
+      input.disabled ||
+      document.querySelector("#setupModal:not(.hidden), #completeModal:not(.hidden), #helpModal:not(.hidden)") ||
+      event.defaultPrevented ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey
+    ) {
+      return false;
+    }
+
+    // 지도 조작 뒤의 일반 문자·한글 IME 시작 키만 입력창으로 되돌린다.
+    // Tab, Esc, 화살표와 버튼·선택 상자 조작은 기존 포커스를 그대로 존중한다.
+    if (!["Process", "Unidentified"].includes(event.key) && event.key.length !== 1) return false;
+    const target = event.target;
+    if (target instanceof Element && target.closest("button, a, select, textarea, input:not(#input), [contenteditable='true']")) {
+      return false;
+    }
+    return true;
+  }
+
   function moveTrainTo(destName) {
     if (state.awaitingStart && destName === state.currentStation) {
       const input = $("#input");
@@ -2074,6 +2099,10 @@
     setHud(state.currentStation);
     const input = $("#input");
     input.addEventListener("input", handleInput);
+    document.addEventListener("keydown", (event) => {
+      if (!shouldRestoreFlightTypingFocus(event, input)) return;
+      if (document.activeElement !== input) input.focus({ preventScroll: true });
+    }, true);
     input.addEventListener("compositionstart", () => {
       state.isComposing = true;
       cancelPendingInputProcessing();

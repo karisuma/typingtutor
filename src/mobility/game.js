@@ -356,6 +356,7 @@
   const countryBoundaryCache = new Map();
   const continentByCountryName = new Map();
   let flightHighlightRequest = 0;
+  let flightFocusFallbackTimer = null;
 
   Object.values(FLIGHT_DATA.worldTour.continents).forEach((continent) => {
     continent.countries.forEach((id) => {
@@ -421,6 +422,25 @@
     $("#geoStudy")?.classList.add("hidden");
   }
 
+  function flightDetailZoom(station) {
+    if (station.focusZoom) return station.focusZoom;
+    if (station.kind !== "water") return 5.4;
+    const radius = station.radiusKm || 900;
+    if (radius <= 220) return 7.1;
+    if (radius <= 500) return 6.1;
+    if (radius <= 900) return 5.2;
+    return 4.25;
+  }
+
+  function focusFlightFallback(station) {
+    map.stop();
+    map.invalidateSize({ pan: false });
+    map.setView([station.lat, station.lng], flightDetailZoom(station), {
+      animate: false,
+      pan: { animate: false },
+    });
+  }
+
   function focusFlightBounds(bounds, maxZoom) {
     if (!bounds?.isValid()) return;
     const compact = window.innerWidth <= 720;
@@ -440,14 +460,17 @@
     const station = FLIGHT_DATA.stations[name];
     if (!station) return;
     const request = ++flightHighlightRequest;
+    clearTimeout(flightFocusFallbackTimer);
+    flightFocusFallbackTimer = null;
     flightGeographyLayer.clearLayers();
 
-    const addLabel = () => L.marker([station.lat, station.lng], {
-      icon: flightStudyIcon(station),
-      keyboard: false,
-      interactive: false,
-      zIndexOffset: 2400,
-    }).addTo(flightGeographyLayer);
+    // 경계 데이터를 받는 동안 전체 지도에 머물지 않도록 먼저 해당 지역으로 이동한다.
+    // 정상 응답이 빠르면 아래 경계 범위 이동만 실행되어 카메라가 한 번만 움직인다.
+    if (focus) {
+      flightFocusFallbackTimer = setTimeout(() => {
+        if (request === flightHighlightRequest) focusFlightFallback(station);
+      }, 140);
+    }
 
     if (station.kind === "water") {
       const waterArea = L.circle([station.lat, station.lng], {
@@ -461,8 +484,11 @@
         interactive: false,
         className: "flight-water-highlight",
       }).addTo(flightGeographyLayer);
-      addLabel();
-      if (focus) focusFlightBounds(waterArea.getBounds(), station.focusZoom || 4.3);
+      if (focus) {
+        clearTimeout(flightFocusFallbackTimer);
+        flightFocusFallbackTimer = null;
+        focusFlightBounds(waterArea.getBounds(), flightDetailZoom(station));
+      }
       return;
     }
 
@@ -496,8 +522,11 @@
       }).addTo(flightGeographyLayer);
       bounds = fallback.getBounds();
     }
-    addLabel();
-    if (focus) focusFlightBounds(bounds, station.focusZoom || 6.3);
+    if (focus) {
+      clearTimeout(flightFocusFallbackTimer);
+      flightFocusFallbackTimer = null;
+      focusFlightBounds(bounds, station.focusZoom || 6.3);
+    }
   }
 
   // ---------------------- Train Sprite ----------------------
@@ -980,10 +1009,16 @@
       }).addTo(journeyLayer);
     });
 
-    map.fitBounds(L.latLngBounds(isFlight ? latlngs : stationLatLngs), {
-      padding: isFlight ? [54, 54] : [70, 70],
-      maxZoom: isFlight ? 4 : 13,
-    });
+    if (isFlight) {
+      // 전체 여정은 구형 개요 화면에서만 보여준다. 상세 지도는 카운트다운 뒤 첫 목표로 전환된다.
+      const start = activeData.stations[route[0]];
+      if (start) focusFlightFallback(start);
+    } else {
+      map.fitBounds(L.latLngBounds(stationLatLngs), {
+        padding: [70, 70],
+        maxZoom: 13,
+      });
+    }
   }
 
   function cancelJourneyCountdown() {
@@ -1083,11 +1118,23 @@
   }
 
   function updateRouteLabelState() {
+    const targetIndex = state.journey.length
+      ? Math.min(state.awaitingStart ? state.journeyIndex : state.journeyIndex + 1, state.journey.length - 1)
+      : -1;
     document.querySelectorAll(".route-stop-label").forEach((label) => {
       const index = Number(label.dataset.routeIndex);
-      label.classList.toggle("completed", index < state.journeyIndex);
-      label.classList.toggle("current", index === state.journeyIndex);
-      label.classList.toggle("next", index === state.journeyIndex + 1);
+      label.classList.toggle("completed", index < targetIndex);
+      label.classList.toggle("current", index === targetIndex);
+      label.classList.toggle("next", index === targetIndex + 1);
+    });
+    state.journey.forEach((name, index) => {
+      const marker = activeMarkers.get(name);
+      const element = marker && marker.getElement();
+      const dot = element && element.querySelector(".station-marker, .highway-marker, .flight-airspace-marker, .flight-water-marker");
+      if (!dot) return;
+      dot.classList.toggle("current-route", index === targetIndex);
+      dot.classList.toggle("next-route", index === targetIndex + 1);
+      dot.classList.toggle("completed-route", index < targetIndex);
     });
   }
 
@@ -1142,7 +1189,7 @@
       activeTransferStations = new Set();
       setupMode = "world-tour";
       $("#brandIcon").textContent = "✈";
-      $("#brandTitle").textContent = "타이핑101 플라이트";
+      $("#brandTitle").textContent = "여행가자 타자연습";
       $("#movedLabel").textContent = "통과 영공";
       $("#typingInstruction").textContent = "나라·바다 이름을 입력해 비행하세요";
       $("#previousRole").textContent = "← 이전 영공";
@@ -1175,7 +1222,7 @@
       clearFlightGeography();
       window.FlightGlobe?.hide();
       $("#brandIcon").textContent = "🛣️";
-      $("#brandTitle").textContent = "타이핑101";
+      $("#brandTitle").textContent = "여행가자 타자연습";
       $("#movedLabel").textContent = "이동한 지역";
       $("#typingInstruction").textContent = "지역 이름을 입력해 이동하세요";
       $("#previousRole").textContent = "← 이전 지역";
@@ -1225,7 +1272,7 @@
       clearFlightGeography();
       window.FlightGlobe?.hide();
       $("#brandIcon").textContent = "🚇";
-      $("#brandTitle").textContent = "타이핑101";
+      $("#brandTitle").textContent = "여행가자 타자연습";
       $("#movedLabel").textContent = "이동한 역";
       $("#typingInstruction").textContent = "역 이름을 입력해 이동하세요";
       $("#previousRole").textContent = "← 이전역";
@@ -1315,9 +1362,15 @@
     $("#setupModal").classList.add("hidden");
     $("#completeModal").classList.add("hidden");
     startJourneyCountdown(() => {
-      focusCurrentStep(state.targetStation);
-      $("#input").disabled = false;
-      $("#input").focus();
+      // 구형 개요를 닫은 뒤 한 프레임을 기다려 실제 지도 크기를 다시 계산한다.
+      // 이 순서를 지켜야 시작 지점 상세 화면이 전체 항로 보기로 되돌아가지 않는다.
+      window.FlightGlobe?.focusSegment(state.currentStation, state.targetStation);
+      requestAnimationFrame(() => {
+        map.invalidateSize({ pan: false });
+        focusCurrentStep(state.targetStation);
+        $("#input").disabled = false;
+        $("#input").focus();
+      });
     });
   }
 
@@ -1448,16 +1501,14 @@
 
   function focusCurrentStep(targetName) {
     const origin = activeData.stations[state.currentStation];
-    const focusedTarget = activeMode === "flight" && state.awaitingStart
-      ? state.journey[1] || targetName
-      : targetName;
-    const destination = activeData.stations[focusedTarget];
-    if (!origin || !destination) return;
     if (activeMode === "flight") {
       window.FlightGlobe?.focusSegment(state.currentStation, targetName);
       highlightFlightGeography(targetName, { focus: true });
       return;
     }
+    const focusedTarget = targetName;
+    const destination = activeData.stations[focusedTarget];
+    if (!origin || !destination) return;
 
     const compact = window.innerWidth <= 720;
     const mapSize = map.getSize();

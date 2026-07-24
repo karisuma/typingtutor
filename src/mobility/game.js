@@ -722,13 +722,13 @@
     }
   }
 
-  // ---------------------- Train Sprite ----------------------
+  // ---------------------- Travel Vehicle Sprites ----------------------
   const trainIcon = L.divIcon({
     className: "",
     iconSize: [36, 36],
     iconAnchor: [18, 18],
     html: `
-      <div class="train-marker" aria-label="현재 열차 위치">
+      <div class="train-marker" aria-label="현재 전철 위치">
         <div class="pulse"></div>
         <div class="body">
           <span class="train-window"></span>
@@ -743,8 +743,57 @@
     className: "",
     iconSize: [42, 42],
     iconAnchor: [21, 21],
-    html: '<div class="flight-marker" aria-label="현재 항공기 위치">✈</div>',
+    html: '<div class="flight-marker" aria-label="현재 비행기 위치">✈</div>',
   });
+
+  const carIcon = L.divIcon({
+    className: "",
+    iconSize: [46, 46],
+    iconAnchor: [23, 23],
+    html: '<div class="travel-vehicle-marker car-marker" aria-label="현재 자동차 위치">🚗</div>',
+  });
+
+  const horseIcon = L.divIcon({
+    className: "",
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
+    html: '<div class="travel-vehicle-marker horse-marker" aria-label="현재 말 여행 위치">🏇</div>',
+  });
+
+  const TRAVEL_MODE = {
+    metro: {
+      icon: trainIcon,
+      countdown: "전철 출발 준비",
+      moving: "전철 이동 중",
+      startMessage: (name) => `${stationLabel(name)}에서 전철을 타고 출발합니다`,
+      moveMessage: (from, to) => `🚇 전철 · ${stationLabel(from)} → ${stationLabel(to)}`,
+    },
+    highway: {
+      icon: carIcon,
+      countdown: "자동차 출발 준비",
+      moving: "자동차 이동 중",
+      startMessage: (name) => `${stationLabel(name)}에서 자동차로 출발합니다`,
+      moveMessage: (from, to) => `🚗 자동차 · ${stationLabel(from)} → ${stationLabel(to)}`,
+    },
+    jeju: {
+      icon: horseIcon,
+      countdown: "말 여행 출발 준비",
+      moving: "말 타고 이동 중",
+      startMessage: (name) => `${stationLabel(name)}에서 말을 타고 여행을 시작합니다`,
+      moveMessage: (from, to) => `🏇 말 여행 · ${stationLabel(from)} → ${stationLabel(to)}`,
+    },
+    flight: {
+      icon: flightIcon,
+      countdown: "비행기 이륙 준비",
+      moving: "비행 중",
+      startMessage: (name) => `${stationLabel(name)} 영공에서 비행기가 이륙합니다`,
+      moveMessage: (from, to) => `✈ 비행기 · ${stationLabel(from)} → ${stationLabel(to)}`,
+    },
+  };
+
+  function travelMode() {
+    return TRAVEL_MODE[activeMode] || TRAVEL_MODE.metro;
+  }
 
   const trainMarker = L.marker([37.4853, 126.9015], {
     icon: trainIcon,
@@ -808,18 +857,18 @@
   function typingInstruction(starting = false) {
     if (activeMode === "flight") {
       return starting
-        ? "출발 영공 이름을 입력해 이륙하세요"
-        : "지나는 나라·바다 이름을 입력해 비행하세요";
+        ? "출발 영공 이름을 입력해 비행기로 이륙하세요"
+        : "지나는 나라·바다 이름을 입력해 비행기로 이동하세요";
     }
     if (activeMode === "jeju") {
       return starting
-        ? "출발 명소 이름을 입력해 여행을 시작하세요"
-        : "다음 제주 명소 이름을 입력해 이동하세요";
+        ? "출발 명소 이름을 입력해 말을 타고 떠나세요"
+        : "다음 제주 명소 이름을 입력해 말을 타고 이동하세요";
     }
     if (activeMode === "highway") {
-      return starting ? "출발 지역 이름을 입력해 시작하세요" : "지역 이름을 입력해 이동하세요";
+      return starting ? "출발 지역 이름을 입력해 자동차로 출발하세요" : "지역 이름을 입력해 자동차로 이동하세요";
     }
-    return starting ? "출발역 이름을 입력해 시작하세요" : "역 이름을 입력해 이동하세요";
+    return starting ? "출발역 이름을 입력해 전철을 타세요" : "역 이름을 입력해 전철로 이동하세요";
   }
 
   function stationOptionLabel(id) {
@@ -1472,7 +1521,7 @@
     document.body.classList.toggle("highway-mode", mode === "highway");
     document.body.classList.toggle("flight-mode", mode === "flight");
     document.body.classList.toggle("jeju-mode", mode === "jeju");
-    trainMarker.setIcon(mode === "flight" ? flightIcon : trainIcon);
+    trainMarker.setIcon(TRAVEL_MODE[mode]?.icon || trainIcon);
     if (mode === "flight") {
       if (map.hasLayer(lightBaseLayer)) map.removeLayer(lightBaseLayer);
       if (map.hasLayer(darkBaseLayer)) map.removeLayer(darkBaseLayer);
@@ -1495,7 +1544,7 @@
       $("#brandIcon").textContent = "✈";
       $("#brandTitle").textContent = "코딩101 여행가자 타자연습";
       $("#movedLabel").textContent = "통과 영공";
-      $("#typingInstruction").textContent = "나라·바다 이름을 입력해 비행하세요";
+      $("#typingInstruction").textContent = "나라·바다 이름을 입력해 비행기로 이동하세요";
       $("#previousRole").textContent = "← 이전 영공";
       $("#currentRole").textContent = "현재 영공";
       $("#nextRole").textContent = "다음 영공 →";
@@ -1537,12 +1586,12 @@
       activeGraph = JEJU_GRAPH;
       activeMarkers = jejuMarkers;
       activeTransferStations = jejuTransferStations;
-      $("#brandIcon").textContent = "🌋";
+      $("#brandIcon").textContent = "🏇";
       $("#brandTitle").textContent = "코딩101 여행가자 타자연습";
       $("#movedLabel").textContent = "방문 명소";
       $("#typingInstruction").textContent = JEJU_ACTIVE_DATA.meta.sponsoredDisclosure
-        ? "명소 이름을 입력해 여행하세요 · 광고 포함"
-        : "명소 이름을 입력해 제주를 여행하세요";
+        ? "명소 이름을 입력해 말을 타고 여행하세요 · 광고 포함"
+        : "명소 이름을 입력해 말을 타고 제주를 여행하세요";
       $("#previousRole").textContent = "← 이전 명소";
       $("#currentRole").textContent = "현재 명소";
       $("#nextRole").textContent = "다음 명소 →";
@@ -1589,10 +1638,10 @@
       clearJejuStudy();
       clearFlightGeography();
       window.FlightGlobe?.hide();
-      $("#brandIcon").textContent = "🛣️";
+      $("#brandIcon").textContent = "🚗";
       $("#brandTitle").textContent = "코딩101 여행가자 타자연습";
       $("#movedLabel").textContent = "이동한 지역";
-      $("#typingInstruction").textContent = "지역 이름을 입력해 이동하세요";
+      $("#typingInstruction").textContent = "지역 이름을 입력해 자동차로 이동하세요";
       $("#previousRole").textContent = "← 이전 지역";
       $("#currentRole").textContent = "현재 지역";
       $("#nextRole").textContent = "다음 지역 →";
@@ -1645,7 +1694,7 @@
       $("#brandIcon").textContent = "🚇";
       $("#brandTitle").textContent = "코딩101 여행가자 타자연습";
       $("#movedLabel").textContent = "이동한 역";
-      $("#typingInstruction").textContent = "역 이름을 입력해 이동하세요";
+      $("#typingInstruction").textContent = "역 이름을 입력해 전철로 이동하세요";
       $("#previousRole").textContent = "← 이전역";
       $("#currentRole").textContent = "현재역";
       $("#nextRole").textContent = "다음역 →";
@@ -1733,7 +1782,7 @@
     updateJourneyProgress();
     setTarget(route[0], { focus: false });
     $("#typingInstruction").textContent = typingInstruction(true);
-    $("#journeyCountdownLabel").textContent = activeMode === "flight" ? "이륙 준비" : "여정 출발";
+    $("#journeyCountdownLabel").textContent = travelMode().countdown;
     $("#input").disabled = true;
     $("#setupModal").classList.add("hidden");
     $("#completeModal").classList.add("hidden");
@@ -2170,13 +2219,11 @@
       state.awaitingStart = false;
       updateJourneyProgress();
       setHud(state.currentStation);
-      showToast(activeMode === "flight"
-        ? `${stationLabel(destName)} 영공에서 이륙합니다`
-        : `${stationLabel(destName)}에서 출발합니다`);
+      showToast(travelMode().startMessage(destName));
 
       const next = state.journey[1];
       $("#typingInstruction").textContent = typingInstruction();
-      $("#inputStatus").textContent = "출발 준비";
+      $("#inputStatus").textContent = travelMode().countdown;
       state.staleCompositionChar = Array.from(stationLabel(destName)).at(-1) || "";
       state.staleCompositionUntil = performance.now() + 400;
       state.startHandoffTimer = setTimeout(() => {
@@ -2201,11 +2248,11 @@
     $("#input").value = "";
     $("#input").disabled = true;
     renderTypingFeedback(stationLabel(destName), stationLabel(destName));
-    $("#inputStatus").textContent = "이동 중";
+    $("#inputStatus").textContent = travelMode().moving;
     $("#inputWrapper").className = "input-wrapper is-moving";
 
     // 도착 역 표시 (toast)
-    showToast(`${stationLabel(state.currentStation)} → ${stationLabel(destName)}`);
+    showToast(travelMode().moveMessage(state.currentStation, destName));
 
     const railPoints =
       state.journey[state.journeyIndex] === state.currentStation &&

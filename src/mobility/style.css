@@ -965,6 +965,46 @@ body {
   transform: translate(-50%, -50%) !important;
 }
 
+/* 고속도로와 제주 여정은 전철 대신 이동수단 자체가 읽히는 큰 지도 마커를 쓴다. */
+.travel-vehicle-marker {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  font-size: 27px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 9px rgba(0, 0, 0, 0.45));
+  position: relative;
+  isolation: isolate;
+}
+
+.travel-vehicle-marker::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  z-index: -1;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  opacity: 0.64;
+  animation: pulse 1.6s ease-out infinite;
+}
+
+.car-marker {
+  background: radial-gradient(circle, #fffdf4 0 25%, #ffcc72 28% 100%);
+  color: #9a4f08;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.24);
+}
+
+.horse-marker {
+  width: 48px;
+  height: 48px;
+  background: radial-gradient(circle, #fffdf5 0 25%, #7bc999 28% 100%);
+  color: #176143;
+  box-shadow: 0 0 0 4px rgba(50, 151, 99, 0.25);
+}
+
 .journey-active .route-stop-label span,
 .journey-active .route-stop-label strong {
   display: none;

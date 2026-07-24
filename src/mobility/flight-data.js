@@ -306,6 +306,37 @@ const FLIGHT_DATA = {
   },
 };
 
+// 세계일주에는 주요국만이 아니라 195개 국가 전체를 후보로 사용한다.
+// 기존 항공 미션·바다 데이터는 그대로 두고, 세계일주 후보군만 확장한다.
+function installWorldCountries() {
+  if (typeof WORLD_COUNTRIES === "undefined") return;
+
+  const continents = FLIGHT_DATA.worldTour.continents;
+  WORLD_COUNTRIES.forEach((country) => {
+    FLIGHT_DATA.stations[country.id] = {
+      name: country.name,
+      en: country.en,
+      lat: country.lat,
+      lng: country.lng,
+      iso2: country.iso2,
+      continent: country.continent,
+      description: "세계일주 국가 · 지도에서 실제 위치와 주변 지역을 확인하세요.",
+    };
+    FLIGHT_DATA.countryIso2[country.name] = country.iso2;
+  });
+
+  Object.entries(continents).forEach(([key, continent]) => {
+    continent.countries = WORLD_COUNTRIES
+      .filter((country) => country.continent === key)
+      .map((country) => country.id);
+    // 주요국 고정 경로 대신, 전체 국가 풀에서 매번 인접 국가 묶음을 고른다.
+    continent.routeGroups = {};
+  });
+  FLIGHT_DATA.worldTour.countryCount = WORLD_COUNTRIES.length;
+}
+
+installWorldCountries();
+
 function buildFlightGraph() {
   const graph = new Map();
   const addEdge = (a, b) => {

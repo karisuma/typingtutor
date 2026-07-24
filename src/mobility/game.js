@@ -1124,14 +1124,69 @@
     throw new Error("조건에 맞는 여정을 만들지 못했습니다. 역 수나 옵션을 바꿔주세요.");
   }
 
+  function worldDistance(from, to) {
+    const toRadians = Math.PI / 180;
+    const latDelta = (to.lat - from.lat) * toRadians;
+    const lngDelta = ((((to.lng - from.lng) + 540) % 360) - 180) * toRadians;
+    const latitudeA = from.lat * toRadians;
+    const latitudeB = to.lat * toRadians;
+    const haversine = Math.sin(latDelta / 2) ** 2
+      + Math.cos(latitudeA) * Math.cos(latitudeB) * Math.sin(lngDelta / 2) ** 2;
+    return 6371 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+  }
+
+  // 전체 국가 풀에서 무작위 출발점을 고른 뒤 가장 가까운 국가들을 이어,
+  // 자주 등장하는 몇 나라로만 치우치지 않으면서도 지그재그를 줄인다.
+  function pickNearbyWorldCountries(countryIds, count) {
+    const available = countryIds
+      .map((id) => ({ id, station: FLIGHT_DATA.stations[id] }))
+      .filter(({ station }) => station);
+    if (available.length <= count) return available.map(({ id }) => id);
+
+    const chosen = [available.splice(Math.floor(Math.random() * available.length), 1)[0]];
+    while (chosen.length < count && available.length) {
+      const previous = chosen.at(-1).station;
+      let closestIndex = 0;
+      let closestDistance = Infinity;
+      available.forEach((candidate, index) => {
+        const distance = worldDistance(previous, candidate.station);
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestIndex = index;
+        }
+      });
+      chosen.push(available.splice(closestIndex, 1)[0]);
+    }
+    return chosen.map(({ id }) => id);
+  }
+
+  function worldTourWaterwaysBetween(fromId, toId) {
+    const from = FLIGHT_DATA.stations[fromId];
+    const to = FLIGHT_DATA.stations[toId];
+    if (!from || !to) return [];
+    const pair = `${from.continent}|${to.continent}`;
+    const intercontinental = {
+      "europe|northAmerica": ["WT_OCEAN_NORTH_ATLANTIC"],
+      "northAmerica|southAmerica": ["WT_SEA_CARIBBEAN"],
+      "southAmerica|africa": ["WT_OCEAN_SOUTH_ATLANTIC"],
+      "africa|oceania": ["WT_OCEAN_INDIAN"],
+    };
+    if (intercontinental[pair]) return intercontinental[pair];
+    if (from.continent === "oceania" && to.continent === "oceania" && worldDistance(from, to) > 900) {
+      return ["WT_OCEAN_SOUTH_PACIFIC"];
+    }
+    return [];
+  }
+
   function buildWorldTourJourney() {
     const makePlan = (counts) => FLIGHT_DATA.worldTour.continentOrder.map((key, index) => {
       const continent = FLIGHT_DATA.worldTour.continents[key];
       const count = counts[index];
-      // 국가를 섞지 않고, 대륙의 진입·이탈 방향에 맞춘 인접 국가 묶음을 사용한다.
-      // 따라서 매번 2~5개 나라를 고르면서도 경로가 되돌아가거나 교차하지 않는다.
-      const countries = (continent.routeGroups?.[count] || continent.countries.slice(0, count)).slice();
-      return { key, label: continent.label, countries };
+      return {
+        key,
+        label: continent.label,
+        countries: pickNearbyWorldCountries(continent.countries, count),
+      };
     });
 
     let counts = [];
@@ -1152,21 +1207,24 @@
     }
     lastWorldTourSignature = signature;
     const route = [];
+    const appendWaterways = (waterways) => {
+      waterways.forEach((waterway) => {
+        // 같은 바다를 여러 섬 구간에서 다시 지나더라도, 입력 대상은 한 번만 둔다.
+        if (!route.includes(waterway)) route.push(waterway);
+      });
+    };
     plan.forEach(({ countries }) => {
       const previousCountry = route.at(-1);
-      if (previousCountry) {
-        route.push(...(FLIGHT_DATA.worldTour.routeWaterways?.[`${previousCountry}|${countries[0]}`] || []));
-      }
+      if (previousCountry) appendWaterways(worldTourWaterwaysBetween(previousCountry, countries[0]));
       countries.forEach((country, index) => {
         route.push(country);
         const nextCountry = countries[index + 1];
-        if (nextCountry) {
-          route.push(...(FLIGHT_DATA.worldTour.routeWaterways?.[`${country}|${nextCountry}`] || []));
-        }
+        if (nextCountry) appendWaterways(worldTourWaterwaysBetween(country, nextCountry));
       });
     });
     const waterCount = route.filter((id) => FLIGHT_DATA.stations[id]?.kind === "water").length;
-    const label = `세계일주 · ${plan.map(({ label: continent, countries }) => `${continent} ${countries.length}개`).join(" · ")} · 해역 ${waterCount}곳`;
+    const countryPool = FLIGHT_DATA.worldTour.countryCount || 195;
+    const label = `세계 ${countryPool}개국 · ${plan.map(({ label: continent, countries }) => `${continent} ${countries.length}개`).join(" · ")} · 해역 ${waterCount}곳`;
     return { route, label };
   }
 

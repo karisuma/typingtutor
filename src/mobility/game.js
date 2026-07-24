@@ -13,7 +13,14 @@
     maxZoom: 17,
     zoomControl: true,
     attributionControl: true,
+    worldCopyJump: false,
+    maxBoundsViscosity: 1,
   });
+
+  // 비행 지도는 세계 타일을 좌우로 네 벌만 표시한다.
+  // 가운데 두 벌(-360°~360°)에서만 카메라가 움직이고, 양 끝 두 벌은 자연스러운 여백 역할을 한다.
+  const FLIGHT_TILE_BOUNDS = [[-85.0511, -720], [85.0511, 720]];
+  const FLIGHT_ACTIVE_BOUNDS = [[-80, -360], [80, 360]];
 
   // 실제 도로·지형이 보이는 밝은 지도 베이스
   const lightBaseLayer = L.tileLayer(
@@ -39,8 +46,8 @@
     {
       attribution: "Tiles © Esri",
       maxZoom: 18,
-      noWrap: true,
-      bounds: [[-85.0511, -180], [85.0511, 180]],
+      noWrap: false,
+      bounds: FLIGHT_TILE_BOUNDS,
     }
   );
   const flightReferenceLayer = L.tileLayer(
@@ -49,8 +56,8 @@
       attribution: "Labels © Esri",
       maxZoom: 18,
       opacity: 0.58,
-      noWrap: true,
-      bounds: [[-85.0511, -180], [85.0511, 180]],
+      noWrap: false,
+      bounds: FLIGHT_TILE_BOUNDS,
     }
   );
 
@@ -154,6 +161,48 @@
 
   function normalizeLongitude(lng) {
     return ((lng + 540) % 360) - 180;
+  }
+
+  // 현재 화면과 가장 가까운 중앙 월드 복사본의 경도를 선택한다.
+  // 예: 피지(178°) → 사모아(-172°)는 178° → 188°으로 이어져 화면이 반대편으로 튀지 않는다.
+  function flightDisplayLongitude(lng, referenceLng = map.getCenter().lng) {
+    const candidates = [lng - 720, lng - 360, lng, lng + 360, lng + 720]
+      .filter((candidate) => candidate >= FLIGHT_ACTIVE_BOUNDS[0][1] && candidate <= FLIGHT_ACTIVE_BOUNDS[1][1]);
+    return candidates.reduce((nearest, candidate) =>
+      Math.abs(candidate - referenceLng) < Math.abs(nearest - referenceLng) ? candidate : nearest
+    );
+  }
+
+  function flightDisplayPoint(station, referenceLng = map.getCenter().lng) {
+    return [station.lat, flightDisplayLongitude(station.lng, referenceLng)];
+  }
+
+  function unwrapFlightPath(points, referenceLng = map.getCenter().lng) {
+    let previousLng = referenceLng;
+    return points.map(([lat, lng]) => {
+      const displayLng = flightDisplayLongitude(lng, previousLng);
+      previousLng = displayLng;
+      return [lat, displayLng];
+    });
+  }
+
+  function offsetGeoJsonLongitudes(geojson, offset) {
+    if (!offset) return geojson;
+    const offsetCoordinates = (coordinates) => {
+      if (!Array.isArray(coordinates)) return coordinates;
+      if (typeof coordinates[0] === "number") return [coordinates[0] + offset, ...coordinates.slice(1)];
+      return coordinates.map(offsetCoordinates);
+    };
+    return {
+      ...geojson,
+      features: geojson.features.map((feature) => ({
+        ...feature,
+        geometry: feature.geometry && {
+          ...feature.geometry,
+          coordinates: offsetCoordinates(feature.geometry.coordinates),
+        },
+      })),
+    };
   }
 
   // 지도 타일을 반복하지 않는 대신, 날짜 변경선을 통과하는 선은 양 끝에서 분리한다.
@@ -432,10 +481,10 @@
     return 4.25;
   }
 
-  function focusFlightFallback(station) {
+  function focusFlightFallback(station, displayPoint = flightDisplayPoint(station)) {
     map.stop();
     map.invalidateSize({ pan: false });
-    map.setView([station.lat, station.lng], flightDetailZoom(station), {
+    map.setView(displayPoint, flightDetailZoom(station), {
       animate: false,
       pan: { animate: false },
     });
@@ -460,6 +509,7 @@
     const station = FLIGHT_DATA.stations[name];
     if (!station) return;
     const request = ++flightHighlightRequest;
+    const displayPoint = flightDisplayPoint(station);
     clearTimeout(flightFocusFallbackTimer);
     flightFocusFallbackTimer = null;
     flightGeographyLayer.clearLayers();
@@ -468,12 +518,12 @@
     // 정상 응답이 빠르면 아래 경계 범위 이동만 실행되어 카메라가 한 번만 움직인다.
     if (focus) {
       flightFocusFallbackTimer = setTimeout(() => {
-        if (request === flightHighlightRequest) focusFlightFallback(station);
+        if (request === flightHighlightRequest) focusFlightFallback(station, displayPoint);
       }, 140);
     }
 
     if (station.kind === "water") {
-      const waterArea = L.circle([station.lat, station.lng], {
+      const waterArea = L.circle(displayPoint, {
         radius: (station.radiusKm || 900) * 1000,
         color: "#8cf4ff",
         weight: 3,
@@ -498,7 +548,8 @@
 
     let bounds;
     if (geojson) {
-      const boundary = L.geoJSON(geojson, {
+      const displayGeojson = offsetGeoJsonLongitudes(geojson, displayPoint[1] - station.lng);
+      const boundary = L.geoJSON(displayGeojson, {
         style: {
           color: "#a7f7ff",
           weight: 3.5,
@@ -512,7 +563,7 @@
       }).addTo(flightGeographyLayer);
       bounds = boundary.getBounds();
     } else {
-      const fallback = L.circle([station.lat, station.lng], {
+      const fallback = L.circle(displayPoint, {
         radius: 360000,
         color: "#a7f7ff",
         weight: 3,
@@ -571,6 +622,7 @@
     journey: [],
     journeyLines: [],
     journeySegmentPaths: [],
+    journeyDisplayPoints: [],
     journeyIndex: 0,
     journeyMode: "random",
     journeyLabel: "",
@@ -955,18 +1007,27 @@
 
   function drawJourney(route) {
     journeyLayer.clearLayers();
-    const stationLatLngs = route.map((name) => {
+    const isFlight = activeMode === "flight";
+    const rawStationLatLngs = route.map((name) => {
       const station = activeData.stations[name];
       return [station.lat, station.lng];
     });
-    state.journeySegmentPaths = route.slice(0, -1).map((name, index) =>
-      railSegmentPath(name, route[index + 1], state.journeyLines[index])
-    );
+    let previousFlightLng = map.getCenter().lng;
+    state.journeySegmentPaths = route.slice(0, -1).map((name, index) => {
+      const segment = railSegmentPath(name, route[index + 1], state.journeyLines[index]);
+      if (!isFlight) return segment;
+      const displaySegment = unwrapFlightPath(segment, previousFlightLng);
+      previousFlightLng = displaySegment.at(-1)?.[1] ?? previousFlightLng;
+      return displaySegment;
+    });
+    const stationLatLngs = isFlight && state.journeySegmentPaths.length
+      ? [state.journeySegmentPaths[0][0], ...state.journeySegmentPaths.map((segment) => segment.at(-1))]
+      : rawStationLatLngs;
+    state.journeyDisplayPoints = stationLatLngs;
     const latlngs = state.journeySegmentPaths.reduce((points, segment, index) => {
       points.push(...(index === 0 ? segment : segment.slice(1)));
       return points;
     }, []);
-    const isFlight = activeMode === "flight";
     L.polyline(latlngs, {
       color: isFlight ? "#d8f6ff" : "#ffffff",
       weight: isFlight ? 7 : 18,
@@ -1002,7 +1063,7 @@
         iconAnchor: [0, 0],
         html: `<div class="route-stop-label${isFlight ? " flight-stop-label" : ""}${endpointClass}${positionClass}" data-route-index="${index}" style="--route-color:${routeColor};--route-text:${routeText}"><span>${index + 1}</span><strong>${stationLabel(name)}</strong></div>`,
       });
-      L.marker([station.lat, station.lng], {
+      L.marker(stationLatLngs[index], {
         icon: labelIcon,
         keyboard: false,
         zIndexOffset: 1400 + index,
@@ -1012,7 +1073,7 @@
     if (isFlight) {
       // 전체 여정은 구형 개요 화면에서만 보여준다. 상세 지도는 카운트다운 뒤 첫 목표로 전환된다.
       const start = activeData.stations[route[0]];
-      if (start) focusFlightFallback(start);
+      if (start) focusFlightFallback(start, stationLatLngs[0]);
     } else {
       map.fitBounds(L.latLngBounds(stationLatLngs), {
         padding: [70, 70],
@@ -1189,7 +1250,7 @@
       activeTransferStations = new Set();
       setupMode = "world-tour";
       $("#brandIcon").textContent = "✈";
-      $("#brandTitle").textContent = "여행가자 타자연습";
+      $("#brandTitle").textContent = "코딩101 여행가자 타자연습";
       $("#movedLabel").textContent = "통과 영공";
       $("#typingInstruction").textContent = "나라·바다 이름을 입력해 비행하세요";
       $("#previousRole").textContent = "← 이전 영공";
@@ -1210,8 +1271,9 @@
       $("#customOptions").classList.add("hidden");
       $("#randomAdvanced").classList.add("hidden");
       populateFlightRoutes();
-      map.setMaxBounds([[-80, -179.9], [80, 179.9]]);
-      map.fitBounds(flightBounds, { padding: [28, 28] });
+      map.setMinZoom(3);
+      map.setMaxBounds(FLIGHT_ACTIVE_BOUNDS);
+      map.fitBounds([[-55, -350], [72, 350]], { padding: [28, 28] });
     } else if (mode === "highway") {
       if (map.hasLayer(darkBaseLayer)) map.removeLayer(darkBaseLayer);
       if (map.hasLayer(flightSatelliteLayer)) map.removeLayer(flightSatelliteLayer);
@@ -1222,7 +1284,7 @@
       clearFlightGeography();
       window.FlightGlobe?.hide();
       $("#brandIcon").textContent = "🛣️";
-      $("#brandTitle").textContent = "여행가자 타자연습";
+      $("#brandTitle").textContent = "코딩101 여행가자 타자연습";
       $("#movedLabel").textContent = "이동한 지역";
       $("#typingInstruction").textContent = "지역 이름을 입력해 이동하세요";
       $("#previousRole").textContent = "← 이전 지역";
@@ -1260,6 +1322,7 @@
       $("#randomOptions").classList.toggle("hidden", setupMode !== "random");
       $("#customOptions").classList.toggle("hidden", setupMode !== "custom");
       $("#randomAdvanced").classList.toggle("hidden", setupMode !== "random");
+      map.setMinZoom(2);
       map.setMaxBounds(null);
       map.fitBounds([[34.5, 126.0], [38.4, 129.7]], { padding: [28, 28] });
     } else {
@@ -1272,7 +1335,7 @@
       clearFlightGeography();
       window.FlightGlobe?.hide();
       $("#brandIcon").textContent = "🚇";
-      $("#brandTitle").textContent = "여행가자 타자연습";
+      $("#brandTitle").textContent = "코딩101 여행가자 타자연습";
       $("#movedLabel").textContent = "이동한 역";
       $("#typingInstruction").textContent = "역 이름을 입력해 이동하세요";
       $("#previousRole").textContent = "← 이전역";
@@ -1310,6 +1373,7 @@
       $("#randomOptions").classList.toggle("hidden", setupMode !== "random");
       $("#customOptions").classList.toggle("hidden", setupMode !== "custom");
       $("#randomAdvanced").classList.toggle("hidden", setupMode !== "random");
+      map.setMinZoom(2);
       map.setMaxBounds(null);
       map.fitBounds(metroBounds, { padding: [32, 32] });
     }
@@ -1346,10 +1410,14 @@
     state.isMoving = false;
     resetRunStats();
 
-    const start = activeData.stations[state.currentStation];
-    trainMarker.setLatLng([start.lat, start.lng]);
     setHud(state.currentStation);
     drawJourney(route);
+    const start = activeData.stations[state.currentStation];
+    trainMarker.setLatLng(
+      activeMode === "flight" && state.journeyDisplayPoints[0]
+        ? state.journeyDisplayPoints[0]
+        : [start.lat, start.lng]
+    );
     setJourneyFocus(true, route);
     if (activeMode === "flight") {
       window.FlightGlobe?.setRoute(route, state.journeyLines.find(Boolean));

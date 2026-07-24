@@ -111,7 +111,7 @@ const FLIGHT_DATA = {
       "WT_OC_PG|WT_OC_NZ": ["WT_SEA_CORAL", "WT_OCEAN_SOUTH_PACIFIC"],
       "WT_OC_PG|WT_OC_FJ": ["WT_SEA_CORAL"],
       "WT_OC_FJ|WT_OC_NZ": ["WT_OCEAN_SOUTH_PACIFIC"],
-      "WT_OC_NZ|WT_OC_WS": ["WT_OCEAN_SOUTH_PACIFIC"],
+      "WT_OC_NZ|WT_OC_WS": ["WT_OCEAN_SOUTH_PACIFIC_SAMOA"],
     },
     continents: {
       asia: {
@@ -289,6 +289,10 @@ const FLIGHT_DATA = {
     WT_OCEAN_SOUTH_PACIFIC: {
       name: "남태평양", en: "South Pacific Ocean", kind: "water", lat: -27.0, lng: 178.0,
       radiusKm: 1150, description: "뉴질랜드·피지·사모아를 잇는 태평양 남부 해역",
+    },
+    WT_OCEAN_SOUTH_PACIFIC_SAMOA: {
+      name: "남태평양", en: "South Pacific Ocean", kind: "water", lat: -22.0, lng: -178.0,
+      radiusKm: 900, description: "뉴질랜드에서 사모아로 이어지는 태평양 남부 해역",
     },
   },
 };

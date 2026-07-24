@@ -55,6 +55,13 @@
       <p id="geoStudyDescription">국경선과 위치를 지도에서 확인하세요.</p>
     </aside>
 
+    <aside id="jejuStudy" class="jeju-study-card hidden" aria-live="polite" aria-label="현재 제주 여행지 학습 정보">
+      <span id="jejuStudyCategory" class="jeju-study-category">제주 명승</span>
+      <strong id="jejuStudyName">성산일출봉</strong>
+      <span id="jejuStudyEnglish">Seongsan Ilchulbong</span>
+      <p id="jejuStudyDescription">제주의 자연과 역사문화 장소를 지도에서 확인하세요.</p>
+    </aside>
+
     <div id="journeyCountdown" class="journey-countdown hidden" aria-live="assertive" aria-atomic="true">
       <div class="journey-countdown-card">
         <span id="journeyCountdownLabel" class="journey-countdown-label">여정 출발</span>
@@ -128,6 +135,13 @@
           <button class="network-card" type="button" data-network="highway" aria-pressed="false">
             <span class="network-icon highway-icon">🛣️</span>
             <b>고속도로</b>
+          </button>
+          <button class="network-card jeju-card" type="button" data-network="jeju" aria-pressed="false">
+            <span class="network-icon jeju-icon">🌋</span>
+            <span class="network-copy">
+              <b>제주 여행</b>
+              <small>자연 · 명승 · 역사문화</small>
+            </span>
           </button>
           <button class="network-card flight-card active" type="button" data-network="flight" aria-pressed="true">
             <span class="network-icon flight-icon">✈</span>
@@ -284,6 +298,7 @@
   <script src="data.js"></script>
   <script src="highway-data.js"></script>
   <script src="flight-data.js"></script>
+  <script src="jeju-data.js"></script>
   <script src="flight-globe.js"></script>
   <script src="game.js"></script>
 </body>

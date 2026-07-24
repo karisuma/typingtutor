@@ -474,6 +474,10 @@
   };
   const COUNTRY_FOCUS_ZOOMS = {
     US: 4.3,
+    NZ: 5.35,
+    FJ: 5.8,
+    WS: 6.3,
+    AU: 4.2,
   };
 
   Object.values(FLIGHT_DATA.worldTour.continents).forEach((continent) => {
@@ -570,6 +574,15 @@
     // flyTo는 멀리 이동할 때 중간에 세계 전경까지 축소하는 곡선 궤적을 만든다.
     // setView 애니메이션은 현재 축척을 유지한 채 목표 축척·위치로 연속 전환한다.
     map.setView(target, flightDetailZoom(station), {
+      animate: true,
+      duration: flightCameraDuration(target),
+      easeLinearity: 0.22,
+    });
+  }
+
+  function focusFlightPoint(displayPoint, zoom) {
+    const target = L.latLng(displayPoint);
+    map.setView(target, zoom, {
       animate: true,
       duration: flightCameraDuration(target),
       easeLinearity: 0.22,
@@ -697,7 +710,13 @@
       const cameraBounds = preferredBounds
         ? displayFlightBounds(preferredBounds, displayPoint[1] - station.lng)
         : bounds;
-      if (!fallbackStarted) focusFlightBounds(cameraBounds, station.focusZoom || 6.3);
+      // 날짜 변경선 근처 섬나라는 경계 영역을 다시 계산하지 않고, 여정이 선택한
+      // 지도 사본의 기준 좌표로 고정한다. 이때 인도양·세계 전경으로 튀지 않는다.
+      const fixedZoom = COUNTRY_FOCUS_ZOOMS[iso2];
+      if (!fallbackStarted) {
+        if (fixedZoom) focusFlightPoint(displayPoint, fixedZoom);
+        else focusFlightBounds(cameraBounds, station.focusZoom || 6.3);
+      }
     }
   }
 

@@ -949,6 +949,74 @@ body {
 .route-stop-label.current.above { transform: translate(-50%, -68px) scale(1.08); }
 .route-stop-label.current.below { transform: translate(-50%, 30px) scale(1.08); }
 
+/* 게임 중에는 현재 목적지만 이름을 크게 읽을 수 있게 둔다.
+   다른 경유지는 작은 반투명 점으로 축약해 가까운 장소끼리 서로 가리지 않는다. */
+.journey-active .route-stop-label {
+  width: 8px;
+  max-width: none;
+  height: 8px;
+  min-height: 0;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.82);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--route-color, #08a449) 72%, #ffffff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--route-color, #08a449) 22%, transparent);
+  opacity: 0.3;
+  transform: translate(-50%, -50%) !important;
+}
+
+.journey-active .route-stop-label span,
+.journey-active .route-stop-label strong {
+  display: none;
+}
+
+.journey-active .route-stop-label.completed { opacity: 0.14; }
+
+.journey-active .route-stop-label.next {
+  width: 11px;
+  height: 11px;
+  opacity: 0.52;
+}
+
+.journey-active .route-stop-label.current {
+  display: flex;
+  width: max-content;
+  max-width: 190px;
+  min-height: 30px;
+  padding: 6px 13px 6px 6px;
+  border: 3px solid #ffffff;
+  border-radius: 999px;
+  background: var(--route-color, #078b3f);
+  color: var(--route-text, #ffffff);
+  font-size: 18px;
+  font-weight: 900;
+  opacity: 1;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--route-color, #078b3f) 25%, transparent), 0 8px 22px rgba(0, 31, 16, 0.52);
+}
+
+.journey-active .route-stop-label.current span {
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  background: #ffffff;
+  color: #163423;
+  font-size: 10px;
+}
+
+.journey-active .route-stop-label.current strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.journey-active .route-stop-label.current.above {
+  transform: translate(-50%, -60px) scale(1.06) !important;
+}
+
+.journey-active .route-stop-label.current.below {
+  transform: translate(-50%, 31px) scale(1.06) !important;
+}
+
 .journey-active .current-station,
 .journey-active .next-station { font-size: 23px; }
 .journey-active .route-tag { padding: 4px 13px; font-size: 12px; }

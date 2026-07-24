@@ -5,6 +5,17 @@ const FLIGHT_DATA = {
     routeCount: 7,
     airportCount: 12,
   },
+  // ArcGIS 국가 경계 데이터의 2자리 ISO 코드. 비행 미션과 세계일주에서 공통으로 사용한다.
+  countryIso2: {
+    "대한민국": "KR", "일본": "JP", "중국": "CN", "인도": "IN", "태국": "TH",
+    "영국": "GB", "프랑스": "FR", "독일": "DE", "이탈리아": "IT", "스페인": "ES",
+    "이집트": "EG", "케냐": "KE", "나이지리아": "NG", "남아프리카공화국": "ZA", "모로코": "MA",
+    "캐나다": "CA", "미국": "US", "멕시코": "MX", "쿠바": "CU", "코스타리카": "CR",
+    "브라질": "BR", "아르헨티나": "AR", "칠레": "CL", "페루": "PE", "콜롬비아": "CO",
+    "호주": "AU", "뉴질랜드": "NZ", "피지": "FJ", "파푸아뉴기니": "PG", "사모아": "WS",
+    "아랍에미리트": "AE", "튀르키예": "TR", "싱가포르": "SG", "인도네시아": "ID",
+    "카타르": "QA", "사우디아라비아": "SA",
+  },
   airports: {
     ICN: { code: "ICN", name: "인천국제공항", city: "서울", lat: 37.4602, lng: 126.4407 },
     LAX: { code: "LAX", name: "로스앤젤레스 국제공항", city: "로스앤젤레스", lat: 33.9416, lng: -118.4085 },
@@ -80,6 +91,28 @@ const FLIGHT_DATA = {
     // 각 묶음은 입·출구 방향까지 고려한 이웃 국가 순서이므로,
     // 무작위 순서 섞기로 생기던 지그재그 항로를 만들지 않습니다.
     continentOrder: ["asia", "europe", "northAmerica", "southAmerica", "africa", "oceania"],
+    // 실제 항로에서 해상·해협을 건너는 나라 쌍만 지정한다.
+    // 선택된 나라 수가 달라져도, 육지 구간에 바다를 억지로 넣지 않는다.
+    routeWaterways: {
+      "WT_ASIA_JP|WT_ASIA_KR": ["WT_STRAIT_KOREA"],
+      "WT_ASIA_KR|WT_ASIA_CN": ["WT_SEA_YELLOW"],
+      "WT_ASIA_IN|WT_EU_FR": ["WT_SEA_ARABIAN", "WT_SEA_RED", "WT_SEA_MEDITERRANEAN"],
+      "WT_ASIA_IN|WT_EU_IT": ["WT_SEA_ARABIAN", "WT_SEA_RED", "WT_SEA_MEDITERRANEAN"],
+      "WT_EU_FR|WT_EU_GB": ["WT_CHANNEL_ENGLISH"],
+      "WT_EU_ES|WT_EU_GB": ["WT_BAY_BISCAY"],
+      "WT_EU_GB|WT_NA_CA": ["WT_OCEAN_NORTH_ATLANTIC"],
+      "WT_NA_US|WT_SA_CO": ["WT_SEA_CARIBBEAN"],
+      "WT_NA_MX|WT_SA_CO": ["WT_SEA_CARIBBEAN"],
+      "WT_NA_CU|WT_SA_CO": ["WT_SEA_CARIBBEAN"],
+      "WT_SA_BR|WT_AF_NG": ["WT_OCEAN_SOUTH_ATLANTIC"],
+      "WT_AF_ZA|WT_OC_AU": ["WT_OCEAN_INDIAN"],
+      "WT_OC_AU|WT_OC_NZ": ["WT_SEA_TASMAN"],
+      "WT_OC_AU|WT_OC_PG": ["WT_STRAIT_TORRES"],
+      "WT_OC_PG|WT_OC_NZ": ["WT_SEA_CORAL", "WT_OCEAN_SOUTH_PACIFIC"],
+      "WT_OC_PG|WT_OC_FJ": ["WT_SEA_CORAL"],
+      "WT_OC_FJ|WT_OC_NZ": ["WT_OCEAN_SOUTH_PACIFIC"],
+      "WT_OC_NZ|WT_OC_WS": ["WT_OCEAN_SOUTH_PACIFIC"],
+    },
     continents: {
       asia: {
         label: "아시아",
@@ -197,6 +230,66 @@ const FLIGHT_DATA = {
     WT_OC_FJ: { name: "피지", en: "Fiji", lat: -17.7, lng: 178.1 },
     WT_OC_PG: { name: "파푸아뉴기니", en: "Papua New Guinea", lat: -6.3, lng: 143.9 },
     WT_OC_WS: { name: "사모아", en: "Samoa", lat: -13.8, lng: -172.1 },
+    WT_STRAIT_KOREA: {
+      name: "대한해협", en: "Korea Strait", kind: "water", lat: 34.4, lng: 129.2,
+      radiusKm: 180, focusZoom: 7.2, description: "대한민국과 일본 사이, 동해 남서부의 해협",
+    },
+    WT_SEA_YELLOW: {
+      name: "황해", en: "Yellow Sea", kind: "water", lat: 35.3, lng: 123.5,
+      radiusKm: 430, description: "대한민국·중국·북한 사이의 바다",
+    },
+    WT_SEA_ARABIAN: {
+      name: "아라비아해", en: "Arabian Sea", kind: "water", lat: 17.5, lng: 65.0,
+      radiusKm: 900, description: "인도와 아라비아반도 사이의 인도양 북서부 해역",
+    },
+    WT_SEA_RED: {
+      name: "홍해", en: "Red Sea", kind: "water", lat: 20.5, lng: 38.8,
+      radiusKm: 650, description: "아프리카 북동부와 아라비아반도 사이의 바다",
+    },
+    WT_SEA_MEDITERRANEAN: {
+      name: "지중해", en: "Mediterranean Sea", kind: "water", lat: 35.0, lng: 18.0,
+      radiusKm: 850, description: "유럽·아프리카·아시아 사이의 바다",
+    },
+    WT_CHANNEL_ENGLISH: {
+      name: "영국해협", en: "English Channel", kind: "water", lat: 50.3, lng: -1.4,
+      radiusKm: 170, focusZoom: 7.2, description: "영국과 프랑스 사이의 해협",
+    },
+    WT_BAY_BISCAY: {
+      name: "비스케이만", en: "Bay of Biscay", kind: "water", lat: 45.0, lng: -5.5,
+      radiusKm: 440, focusZoom: 6.2, description: "프랑스 서부와 스페인 북부 사이의 대서양 만",
+    },
+    WT_OCEAN_NORTH_ATLANTIC: {
+      name: "북대서양", en: "North Atlantic Ocean", kind: "water", lat: 45.0, lng: -36.0,
+      radiusKm: 1500, description: "유럽과 북아메리카 사이의 대서양",
+    },
+    WT_SEA_CARIBBEAN: {
+      name: "카리브해", en: "Caribbean Sea", kind: "water", lat: 15.5, lng: -75.0,
+      radiusKm: 900, description: "북아메리카와 남아메리카 사이의 열대 해역",
+    },
+    WT_OCEAN_SOUTH_ATLANTIC: {
+      name: "남대서양", en: "South Atlantic Ocean", kind: "water", lat: -17.0, lng: -18.0,
+      radiusKm: 1600, description: "남아메리카와 아프리카 사이의 대서양",
+    },
+    WT_OCEAN_INDIAN: {
+      name: "인도양", en: "Indian Ocean", kind: "water", lat: -20.0, lng: 82.0,
+      radiusKm: 1700, description: "아프리카·아시아·오세아니아 사이의 대양",
+    },
+    WT_SEA_TASMAN: {
+      name: "태즈먼해", en: "Tasman Sea", kind: "water", lat: -39.0, lng: 155.0,
+      radiusKm: 950, description: "오스트레일리아와 뉴질랜드 사이의 바다",
+    },
+    WT_STRAIT_TORRES: {
+      name: "토레스 해협", en: "Torres Strait", kind: "water", lat: -10.5, lng: 142.0,
+      radiusKm: 290, focusZoom: 6.8, description: "오스트레일리아 북부와 파푸아뉴기니 사이의 해협",
+    },
+    WT_SEA_CORAL: {
+      name: "산호해", en: "Coral Sea", kind: "water", lat: -18.0, lng: 155.0,
+      radiusKm: 1000, description: "오스트레일리아 동북쪽과 파푸아뉴기니·태평양 섬 사이의 바다",
+    },
+    WT_OCEAN_SOUTH_PACIFIC: {
+      name: "남태평양", en: "South Pacific Ocean", kind: "water", lat: -27.0, lng: 178.0,
+      radiusKm: 1150, description: "뉴질랜드·피지·사모아를 잇는 태평양 남부 해역",
+    },
   },
 };
 

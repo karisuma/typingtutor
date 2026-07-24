@@ -18,7 +18,7 @@
   <div id="app">
     <header class="topbar">
       <div class="brand">
-        <span class="brand-icon">🚇</span>
+        <span class="brand-icon" id="brandIcon">🚇</span>
         <span class="brand-title" id="brandTitle">타이핑101</span>
       </div>
       <div class="stats">
@@ -31,7 +31,7 @@
           <span class="stat-value" id="accuracy">100%</span>
         </div>
         <div class="stat">
-          <span class="stat-label">이동한 역</span>
+          <span class="stat-label" id="movedLabel">이동한 역</span>
           <span class="stat-value" id="moved">0</span>
         </div>
         <div class="stat journey-stat">
@@ -47,10 +47,11 @@
     </header>
 
     <div id="map"></div>
+    <div id="flightGlobe" aria-label="3차원 지구본 비행 지도"></div>
 
     <div id="journeyCountdown" class="journey-countdown hidden" aria-live="assertive" aria-atomic="true">
       <div class="journey-countdown-card">
-        <span class="journey-countdown-label">여정 출발</span>
+        <span id="journeyCountdownLabel" class="journey-countdown-label">여정 출발</span>
         <strong id="journeyCountdownNumber" class="journey-countdown-number">3</strong>
       </div>
     </div>
@@ -111,7 +112,7 @@
 
         <p class="setup-section-label">1. 무엇으로 연습할까요?</p>
         <div class="network-choice" role="radiogroup" aria-label="플레이 네트워크">
-          <button class="network-card active" type="button" data-network="metro" aria-pressed="true">
+          <button class="network-card" type="button" data-network="metro" aria-pressed="false">
             <span class="network-icon metro-icon">🚇</span>
             <span class="network-copy">
               <b>수도권 전철</b>
@@ -122,15 +123,46 @@
             <span class="network-icon highway-icon">🛣️</span>
             <b>고속도로</b>
           </button>
+          <button class="network-card flight-card active" type="button" data-network="flight" aria-pressed="true">
+            <span class="network-icon flight-icon">✈</span>
+            <span class="network-copy">
+              <b>글로벌 비행</b>
+              <small>주요 공항 · 영공 국가</small>
+            </span>
+          </button>
         </div>
 
-        <p class="setup-section-label">2. 어떻게 연습할까요?</p>
+        <p class="setup-section-label" id="setupModeLabel">2. 세계일주 설정</p>
         <div class="mode-tabs" role="tablist" aria-label="여정 선택 방식">
           <button class="mode-tab active" type="button" data-mode="random" role="tab" aria-selected="true">랜덤으로 시작</button>
           <button class="mode-tab" type="button" data-mode="custom" role="tab" aria-selected="false">출발·도착 지정</button>
         </div>
 
         <form id="setupForm">
+          <div id="flightModeTabs" class="flight-mode-tabs" role="tablist" aria-label="비행 연습 방식">
+            <button class="flight-mode-tab active" type="button" data-flight-mode="world-tour" role="tab" aria-selected="true">🌍 세계일주</button>
+            <button class="flight-mode-tab" type="button" data-flight-mode="mission" role="tab" aria-selected="false">항로 미션</button>
+          </div>
+
+          <div id="worldTourOptions" class="setup-panel world-tour-options">
+            <div class="world-tour-title">
+              <span>기본 모드</span>
+              <strong>세계일주</strong>
+            </div>
+            <p>아시아·유럽·북·남아메리카·아프리카·오세아니아에서 각각 <b>2~5개 나라</b>를 골라, 가까운 나라 순서로 한 방향 비행합니다.</p>
+            <div class="world-tour-continent-list" aria-label="포함 대륙">
+              <span>아시아</span><span>유럽</span><span>북아메리카</span><span>남아메리카</span><span>아프리카</span><span>오세아니아</span>
+            </div>
+          </div>
+
+          <div id="flightOptions" class="setup-panel flight-options hidden">
+            <label class="field">
+              <span>비행 미션 선택</span>
+              <select id="flightRoute" aria-label="비행 미션 선택"></select>
+            </label>
+            <p class="flight-help">출발·도착 도시는 공항으로 확인하고, 항로를 따라 지나는 국가·주요 지역을 입력합니다.</p>
+          </div>
+
           <div id="randomOptions" class="setup-panel">
             <label class="field">
               <span id="countLabel">몇 개 역을 연습할까요?</span>
@@ -226,7 +258,8 @@
       <div class="modal-content">
         <h2>게임 방법</h2>
         <ul>
-          <li>시작 화면에서 <b>메트로</b> 또는 <b>고속도로</b> 모드를 선택합니다.</li>
+          <li>시작 화면에서 <b>메트로</b>, <b>고속도로</b>, 또는 <b>글로벌 비행</b> 모드를 선택합니다.</li>
+          <li>글로벌 비행에서는 공항 도시를 보고, 항로를 따라 지나는 국가·주요 지역 이름을 순서대로 입력합니다.</li>
           <li>랜덤 여정은 입력한 개수만큼 연결된 역·지역을 선택하며, 같은 곳을 두 번 지나지 않습니다.</li>
           <li>구간 지정은 출발지와 도착지 사이의 중복 없는 최단 경로를 만듭니다.</li>
           <li>목적지로 지정된 역이나 지역 이름을 <b>타이핑</b>하면 차량이 실제 좌표를 따라 이동합니다.</li>
@@ -244,6 +277,8 @@
   ></script>
   <script src="data.js"></script>
   <script src="highway-data.js"></script>
+  <script src="flight-data.js"></script>
+  <script src="flight-globe.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

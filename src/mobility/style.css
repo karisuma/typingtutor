@@ -1705,3 +1705,533 @@ body {
   .current-station.long-name,
   .journey-active .current-station.long-name { font-size: 13px; }
 }
+
+/* ===== Global Flight mission: virtual-earth navigation ===== */
+.flight-icon {
+  background: radial-gradient(circle at 30% 22%, #d7fbff, #61d8ff 45%, #1574bd);
+  color: #04223e;
+}
+
+.flight-options {
+  margin: 2px 0 16px;
+}
+
+.flight-help {
+  margin: 9px 2px 0;
+  color: #5b6b72;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.flight-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 2px 0 14px;
+  padding: 5px;
+  border-radius: 15px;
+  background: #eaf5fb;
+}
+
+.flight-mode-tabs.hidden { display: none; }
+
+.flight-mode-tab {
+  border: 0;
+  border-radius: 11px;
+  padding: 11px;
+  background: transparent;
+  color: #527084;
+  font: 800 14px/1 inherit;
+  cursor: pointer;
+}
+
+.flight-mode-tab.active {
+  background: #fff;
+  color: #086897;
+  box-shadow: 0 3px 10px rgba(9, 92, 137, 0.14);
+}
+
+.world-tour-options {
+  margin: 2px 0 16px;
+  padding: 15px;
+  border: 1px solid #b8e5f5;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #edfaff, #f9fdff);
+}
+
+.world-tour-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.world-tour-title span {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #087bb0;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.world-tour-title strong {
+  color: #0a4e70;
+  font-size: 17px;
+}
+
+.world-tour-options p {
+  margin: 9px 0 11px;
+  color: #416373;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.55;
+}
+
+.world-tour-options p b { color: #087bb0; }
+
+.world-tour-continent-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.world-tour-continent-list span {
+  padding: 5px 7px;
+  border: 1px solid #b9e2ef;
+  border-radius: 999px;
+  background: #fff;
+  color: #1b627f;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.flight-airspace-marker {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #c6f7ff;
+  border-radius: 50%;
+  background: #159de0;
+  box-shadow: 0 0 0 3px rgba(26, 192, 255, 0.24), 0 0 14px rgba(71, 211, 255, 0.9);
+}
+
+.flight-airspace-marker.selected-route {
+  width: 18px;
+  height: 18px;
+  margin: -4px;
+  border: 4px solid var(--route-color, #45d7ff);
+  background: #e9fcff;
+  box-shadow: 0 0 0 5px rgba(69, 215, 255, 0.22), 0 0 22px rgba(69, 215, 255, 0.86);
+}
+
+.flight-airport-marker {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid rgba(190, 244, 255, 0.9);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(178, 247, 255, 0.98) 0 9%, rgba(34, 174, 232, 0.62) 12% 27%, rgba(5, 39, 75, 0.84) 30% 100%);
+  color: #f2feff;
+  font-size: 16px;
+  line-height: 1;
+  box-shadow: 0 0 0 5px rgba(87, 208, 255, 0.1), 0 0 22px rgba(41, 184, 245, 0.6);
+}
+
+.flight-marker {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(198, 249, 255, 0.92);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(214, 251, 255, 0.95) 0 12%, rgba(62, 201, 255, 0.68) 14% 33%, rgba(4, 37, 70, 0.86) 35% 100%);
+  color: #fff;
+  font-size: 23px;
+  filter: drop-shadow(0 0 10px rgba(65, 213, 255, 0.86));
+  text-shadow: 0 1px 4px #00213e;
+  transform: rotate(-18deg);
+}
+
+body.flight-mode {
+  background: #020a17;
+  color: #e9f8ff;
+}
+
+.flight-mode #app {
+  background:
+    radial-gradient(circle at 50% 34%, rgba(16, 90, 143, 0.22), transparent 29%),
+    linear-gradient(180deg, #07182b 0%, #020a17 100%);
+}
+
+.flight-mode .topbar {
+  border-bottom-color: rgba(120, 215, 255, 0.22);
+  background: rgba(3, 16, 35, 0.94);
+  color: #e7f8ff;
+  box-shadow: 0 8px 24px rgba(0, 8, 22, 0.22);
+}
+
+.flight-mode .brand-icon {
+  background: linear-gradient(145deg, #6ce8ff, #1e76c9);
+  color: #041b34;
+  box-shadow: 0 0 20px rgba(78, 214, 255, 0.44);
+}
+
+.flight-mode .stat-label { color: #8eb7c9; }
+.flight-mode .stat-value { color: #e8fbff; }
+.flight-mode .stat-value.accent { color: #71e4ff; }
+.flight-mode .icon-btn {
+  border-color: rgba(128, 222, 255, 0.3);
+  background: rgba(16, 58, 89, 0.56);
+  color: #dff8ff;
+}
+
+.flight-mode .leaflet-tile-pane {
+  filter: brightness(0.82) contrast(1.14) saturate(0.86);
+}
+
+.flight-mode .leaflet-control-zoom a,
+.flight-mode .leaflet-control-attribution {
+  border-color: rgba(130, 220, 255, 0.18) !important;
+  background: rgba(3, 18, 38, 0.86) !important;
+  color: #a9dce9 !important;
+}
+
+.flight-mode .leaflet-tooltip.flight-label,
+.flight-mode .leaflet-tooltip.flight-airport-label {
+  border: 1px solid rgba(136, 229, 255, 0.52);
+  border-radius: 8px;
+  background: rgba(2, 21, 42, 0.9);
+  color: #e5fbff;
+  font-weight: 800;
+  box-shadow: 0 5px 15px rgba(0, 3, 14, 0.4);
+}
+
+.flight-mode .leaflet-tooltip::before { border-top-color: rgba(2, 21, 42, 0.9); }
+
+.flight-mode .hud {
+  --previous-line: #45d7ff;
+  --next-line: #45d7ff;
+  --following-line: #45d7ff;
+  border-color: rgba(118, 215, 255, 0.22);
+  background:
+    linear-gradient(90deg, rgba(79, 205, 255, 0.07) 1px, transparent 1px) 0 0 / 82px 100%,
+    linear-gradient(180deg, rgba(5, 30, 53, 0.98), rgba(2, 16, 34, 0.98));
+  box-shadow: inset 0 1px rgba(214, 250, 255, 0.09), inset 0 -12px 22px rgba(0, 3, 15, 0.24);
+}
+
+.flight-mode .hud::before { border-color: rgba(182, 242, 255, 0.26); }
+.flight-mode .step-label { color: #89b2c4; }
+.flight-mode .prev-station,
+.flight-mode .current-station,
+.flight-mode .next-station,
+.flight-mode .after-next-station { color: #ccecf7; }
+.flight-mode .next-station { color: #71e4ff; }
+.flight-mode .after-next-station { color: #9ac7ff; }
+.flight-mode .current-station,
+.flight-mode .journey-active .current-station {
+  border-color: #45d7ff;
+  background: #062946;
+  color: #f0fdff;
+  box-shadow: 0 3px 0 #1e86d2, 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+.flight-mode .station-node,
+.flight-mode .current-node { background: #062946; }
+.flight-mode .route-tag { border-color: rgba(213, 249, 255, 0.56); }
+
+.flight-mode .input-bar {
+  border-top-color: rgba(112, 214, 255, 0.24);
+  background: linear-gradient(180deg, rgba(4, 28, 49, 0.98), rgba(2, 14, 31, 0.98));
+}
+
+.flight-mode .input-heading { color: #d9f7ff; }
+.flight-mode .typing-instruction,
+.flight-mode .input-status { color: #88b9ce; }
+.flight-mode .input-wrapper {
+  border-color: rgba(118, 219, 255, 0.48);
+  background: rgba(5, 35, 60, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(235, 253, 255, 0.06), 0 0 18px rgba(41, 184, 245, 0.1);
+}
+
+/* 위성 지도 위에서도 입력한 한글이 사라지지 않도록 입력면을 명확히 분리한다. */
+.flight-mode #input {
+  background: #062b49;
+  color: #f5fdff;
+  caret-color: #75ebff;
+}
+
+.flight-mode #input::placeholder { color: rgba(210, 244, 255, 0.62); }
+.flight-mode #input { color: #f0fdff; }
+.flight-mode .char-pending { color: rgba(194, 234, 246, 0.45); }
+.flight-mode .char-correct { color: #66ecb5; }
+
+.flight-mode .journey-countdown {
+  background: radial-gradient(circle, rgba(33, 189, 255, 0.24), rgba(1, 9, 26, 0.34) 48%, rgba(0, 4, 13, 0.7) 100%);
+}
+
+.flight-mode .journey-countdown-card {
+  border-color: rgba(137, 230, 255, 0.76);
+  background: rgba(2, 27, 53, 0.82);
+  box-shadow: 0 18px 60px rgba(0, 5, 19, 0.7), 0 0 42px rgba(46, 191, 255, 0.2);
+}
+
+.flight-mode .route-stop-label.flight-stop-label {
+  border-color: rgba(149, 234, 255, 0.86);
+  background: rgba(2, 27, 52, 0.94);
+  color: #e9fbff;
+  box-shadow: 0 5px 16px rgba(0, 4, 17, 0.58), 0 0 16px rgba(64, 206, 255, 0.16);
+}
+
+.flight-mode .route-stop-label.flight-stop-label span {
+  background: var(--route-color, #45d7ff);
+  color: #04243d;
+}
+
+.flight-mode .route-stop-label.flight-stop-label.completed { opacity: 0.46; }
+.flight-mode .route-stop-label.flight-stop-label.current { box-shadow: 0 0 0 4px rgba(69, 215, 255, 0.18), 0 5px 16px rgba(0, 4, 17, 0.58); }
+
+.flight-mode .mode-tabs { display: none !important; }
+
+@media (max-width: 720px) {
+  .flight-mode .route-stop-label.flight-stop-label { font-size: 11px; }
+  .flight-mode .flight-help { font-size: 11px; }
+}
+
+/* ===== Flight globe refresh: bright satellite geography, restrained glass HUD ===== */
+.flight-mode #map {
+  background: #a9d7ed;
+}
+
+.flight-mode .leaflet-tile-pane {
+  filter: none;
+}
+
+.flight-mode .leaflet-control-zoom a,
+.flight-mode .leaflet-control-attribution {
+  border-color: rgba(13, 56, 92, 0.25) !important;
+  background: rgba(248, 253, 255, 0.86) !important;
+  color: #164968 !important;
+  box-shadow: 0 3px 12px rgba(24, 78, 108, 0.16);
+}
+
+.flight-mode .leaflet-tooltip.flight-airport-label {
+  border: 1px solid rgba(16, 119, 177, 0.3);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #0b4b70;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 5px 16px rgba(18, 81, 115, 0.22);
+}
+
+.flight-mode .leaflet-tooltip.flight-airport-label::before {
+  border-top-color: rgba(255, 255, 255, 0.96);
+}
+
+.flight-mode .flight-airport-marker {
+  border-color: #fff;
+  background: radial-gradient(circle, #fff 0 11%, #7ee8ff 13% 29%, #0879bb 31% 100%);
+  color: #00395e;
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.48), 0 4px 16px rgba(11, 108, 165, 0.42);
+}
+
+.flight-mode .flight-airspace-marker {
+  border-color: #fff;
+  background: #13aee6;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.72), 0 0 14px rgba(0, 135, 206, 0.65);
+}
+
+.flight-mode.journey-active .flight-airspace-marker:not(.selected-route) {
+  opacity: 0;
+}
+
+.flight-mode .flight-marker {
+  border-color: #fff;
+  background: radial-gradient(circle, #fff 0 12%, #89eaff 14% 33%, #0876b8 35% 100%);
+  color: #013f65;
+  filter: drop-shadow(0 3px 10px rgba(0, 93, 156, 0.6));
+  text-shadow: none;
+}
+
+.flight-mode .hud {
+  border-color: rgba(205, 242, 255, 0.64);
+  background:
+    linear-gradient(90deg, rgba(145, 222, 255, 0.1) 1px, transparent 1px) 0 0 / 82px 100%,
+    linear-gradient(180deg, rgba(3, 43, 79, 0.82), rgba(4, 31, 63, 0.78));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.25), 0 -8px 28px rgba(3, 53, 87, 0.16);
+  backdrop-filter: blur(14px) saturate(1.15);
+}
+
+.flight-mode .hud::before {
+  border-color: rgba(223, 250, 255, 0.52);
+}
+
+.flight-mode .step-label { color: #c9eaf7; }
+.flight-mode .prev-station,
+.flight-mode .current-station,
+.flight-mode .next-station,
+.flight-mode .after-next-station { color: #f4fdff; }
+.flight-mode .next-station { color: #66e8ff; }
+.flight-mode .after-next-station { color: #b9e6ff; }
+
+.flight-mode .current-station,
+.flight-mode .journey-active .current-station {
+  border-color: #b7f5ff;
+  background: rgba(4, 75, 119, 0.86);
+  box-shadow: 0 3px 0 #29b8e9, 0 6px 16px rgba(0, 53, 86, 0.28);
+}
+
+.flight-mode .input-bar {
+  border-top-color: rgba(206, 244, 255, 0.48);
+  background: linear-gradient(180deg, rgba(6, 50, 85, 0.86), rgba(4, 32, 65, 0.9));
+  box-shadow: 0 -8px 30px rgba(0, 68, 105, 0.14);
+  backdrop-filter: blur(14px) saturate(1.1);
+}
+
+.flight-mode .input-wrapper {
+  border-color: rgba(153, 237, 255, 0.92);
+  background: rgba(4, 37, 70, 0.76);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.13), 0 0 18px rgba(57, 197, 243, 0.18);
+}
+
+.flight-mode .journey-countdown {
+  background: radial-gradient(circle, rgba(69, 194, 255, 0.18), rgba(11, 65, 103, 0.16) 46%, rgba(3, 33, 59, 0.08) 78%);
+}
+
+.flight-mode .journey-countdown-card {
+  border-color: rgba(216, 250, 255, 0.92);
+  background: rgba(5, 68, 113, 0.88);
+  box-shadow: 0 18px 54px rgba(8, 69, 108, 0.3), 0 0 34px rgba(72, 207, 255, 0.32);
+}
+
+.flight-mode .route-stop-label.flight-stop-label {
+  border-color: rgba(242, 253, 255, 0.94);
+  background: rgba(4, 73, 118, 0.9);
+  color: #f5fdff;
+  box-shadow: 0 4px 14px rgba(0, 66, 104, 0.32);
+}
+
+.flight-mode .route-stop-label.flight-stop-label span {
+  background: #dffaff;
+  color: #075b8e;
+}
+
+/* 실제 구형 지구본은 비행 모드에서만 Leaflet 지도 위에 교체해 표시한다. */
+#flightGlobe {
+  display: none;
+  grid-row: 2;
+  grid-column: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  background:
+    radial-gradient(circle at 50% 52%, rgba(75, 186, 244, 0.22), transparent 42%),
+    linear-gradient(180deg, #061c38, #0d5d86 58%, #072a4f);
+}
+
+.flight-mode.flight-globe-ready #flightGlobe { display: block; }
+.flight-mode.flight-globe-ready #map {
+  visibility: hidden;
+  pointer-events: none;
+}
+.flight-mode.flight-globe-ready #map .leaflet-control-container { display: none; }
+
+#flightGlobe .flight-globe-sphere {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(64vh, 62vw);
+  height: min(64vh, 62vw);
+  overflow: hidden;
+  border: 2px solid rgba(206, 248, 255, 0.9);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 7px rgba(76, 194, 246, 0.12),
+    0 0 62px rgba(41, 167, 232, 0.7),
+    inset 0 0 55px rgba(1, 23, 55, 0.36);
+  transform: translate(-50%, -50%);
+}
+
+#flightGlobe .leaflet-control-container { display: none; }
+
+.globe-point {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.globe-point-airport {
+  flex-direction: column;
+  gap: 1px;
+  min-width: 47px;
+  padding: 5px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #075380;
+  font-size: 10px;
+  line-height: 1.05;
+  box-shadow: 0 4px 13px rgba(0, 38, 75, 0.34);
+}
+
+.globe-point-airport b { font-size: 15px; line-height: 1; }
+.globe-point-airport span { font-weight: 800; }
+
+.globe-point-checkpoint,
+.globe-point-start {
+  gap: 5px;
+  padding: 4px 7px 4px 4px;
+  border: 1px solid rgba(225, 251, 255, 0.96);
+  border-radius: 999px;
+  background: rgba(3, 71, 115, 0.9);
+  color: #f8feff;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 3px 11px rgba(0, 36, 71, 0.42);
+}
+
+.globe-point-checkpoint i,
+.globe-point-start i {
+  display: grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  border-radius: 50%;
+  background: #66dcff;
+  color: #053b62;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.globe-point-plane {
+  width: 36px;
+  height: 36px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #0787c8;
+  color: #fff;
+  font-size: 19px;
+  filter: drop-shadow(0 3px 9px rgba(0, 48, 93, 0.54));
+  transform: translate(-50%, -50%) rotate(-18deg);
+}
+
+@media (max-width: 720px) {
+  #flightGlobe .flight-globe-sphere {
+    width: min(84vw, 54vh);
+    height: min(84vw, 54vh);
+  }
+  .globe-point-airport { font-size: 8px; }
+  .globe-point-airport b { font-size: 12px; }
+  .globe-point-checkpoint,
+  .globe-point-start { font-size: 10px; }
+}
+
+.flight-mode.flight-globe-ready .hud,
+.flight-mode.flight-globe-ready .input-bar {
+  position: relative;
+  z-index: 20;
+}

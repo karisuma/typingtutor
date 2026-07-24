@@ -390,7 +390,9 @@
 
   const flightMarkers = new Map();
   Object.entries(FLIGHT_DATA.stations).forEach(([name, station]) => {
-    const markerClass = station.kind === "water" ? "flight-water-marker" : "flight-airspace-marker";
+    const markerClass = station.kind === "water"
+      ? "flight-water-marker"
+      : `flight-airspace-marker${station.kind === "landmark" ? " flight-landmark-marker" : ""}`;
     const icon = L.divIcon({
       className: "",
       iconSize: [12, 12],
@@ -433,6 +435,7 @@
   let activeMarkers = stationMarkers;
   let activeTransferStations = transferStations;
   let setupMode = "world-tour";
+  let lastWorldTourSignature = "";
 
   // 현재 타이핑 대상의 실제 국가 경계는 필요할 때만 불러와 캐시한다.
   // Esri World Countries 일반화 경계는 현재 사용 중인 위성/지명 타일과 같은 제공처다.
@@ -442,6 +445,11 @@
   const continentByCountryName = new Map();
   let flightHighlightRequest = 0;
   let flightFocusFallbackTimer = null;
+  // 해외 영토가 넓게 퍼져 있는 나라는 전체 GeoJSON 경계로 확대하면 세계 전경으로 밀릴 수 있다.
+  // 학습용 상세 화면에서는 본토 중심 범위를 우선 사용한다.
+  const COUNTRY_FOCUS_BOUNDS = {
+    US: [[24.2, -125.2], [49.7, -66.3]],
+  };
 
   Object.values(FLIGHT_DATA.worldTour.continents).forEach((continent) => {
     continent.countries.forEach((id) => {
@@ -470,7 +478,7 @@
   }
 
   function flightStudyIcon(station) {
-    const type = station.kind === "water" ? "해역" : "나라";
+    const type = station.kind === "water" ? "해역" : station.kind === "landmark" ? "대한민국 지리" : "나라";
     return L.divIcon({
       className: "",
       iconSize: [1, 1],
@@ -487,18 +495,23 @@
       return;
     }
     const isWater = station.kind === "water";
+    const isLandmark = station.kind === "landmark";
     const continent = continentByCountryName.get(station.name) || "세계 주요 지역";
-    $("#geoStudyCategory").textContent = isWater ? "해역 · 세계 지리" : `나라 · ${continent}`;
+    $("#geoStudyCategory").textContent = isWater
+      ? "해역 · 세계 지리"
+      : isLandmark
+        ? "대한민국 · 동해"
+        : `나라 · ${continent}`;
     $("#geoStudyName").textContent = station.name;
     $("#geoStudyEnglish").textContent = station.en || station.name;
-    $("#geoStudyDescription").textContent = isWater
-      ? station.description || "비행 경로가 지나는 주요 해역"
+    $("#geoStudyDescription").textContent = isWater || isLandmark
+      ? station.description || "비행 경로가 지나는 주요 지리 학습 지점"
       : `${continent}의 나라 · 지도에서 실제 국경선과 위치를 확인하세요.`;
     card.classList.remove("hidden");
 
-    $("#currentRole").textContent = isWater ? "현재 해역" : "현재 영공";
-    $("#nextRole").textContent = isWater ? "다음 해역 →" : "다음 영공 →";
-    $("#afterNextRole").textContent = isWater ? "다다음 해역 →" : "다다음 영공 →";
+    $("#currentRole").textContent = isWater ? "현재 해역" : isLandmark ? "현재 지점" : "현재 영공";
+    $("#nextRole").textContent = isWater ? "다음 해역 →" : isLandmark ? "다음 지점 →" : "다음 영공 →";
+    $("#afterNextRole").textContent = isWater ? "다다음 해역 →" : isLandmark ? "다다음 지점 →" : "다다음 영공 →";
   }
 
   function clearFlightGeography() {
@@ -541,6 +554,11 @@
     });
   }
 
+  function displayFlightBounds(bounds, longitudeOffset = 0) {
+    if (!bounds) return null;
+    return L.latLngBounds(bounds.map(([lat, lng]) => [lat, lng + longitudeOffset]));
+  }
+
   async function highlightFlightGeography(name, { focus = false } = {}) {
     const station = FLIGHT_DATA.stations[name];
     if (!station) return;
@@ -556,6 +574,25 @@
       flightFocusFallbackTimer = setTimeout(() => {
         if (request === flightHighlightRequest) focusFlightFallback(station, displayPoint);
       }, 140);
+    }
+
+    if (station.kind === "landmark") {
+      const landmarkArea = L.circle(displayPoint, {
+        radius: (station.radiusKm || 24) * 1000,
+        color: "#fff2a6",
+        weight: 3.5,
+        opacity: 1,
+        fillColor: "#1fc9ff",
+        fillOpacity: 0.3,
+        interactive: false,
+        className: "flight-landmark-highlight",
+      }).addTo(flightGeographyLayer);
+      if (focus) {
+        clearTimeout(flightFocusFallbackTimer);
+        flightFocusFallbackTimer = null;
+        focusFlightBounds(landmarkArea.getBounds(), flightDetailZoom(station));
+      }
+      return;
     }
 
     if (station.kind === "water") {
@@ -612,7 +649,11 @@
     if (focus) {
       clearTimeout(flightFocusFallbackTimer);
       flightFocusFallbackTimer = null;
-      focusFlightBounds(bounds, station.focusZoom || 6.3);
+      const preferredBounds = station.focusBounds || COUNTRY_FOCUS_BOUNDS[iso2];
+      const cameraBounds = preferredBounds
+        ? displayFlightBounds(preferredBounds, displayPoint[1] - station.lng)
+        : bounds;
+      focusFlightBounds(cameraBounds, station.focusZoom || 6.3);
     }
   }
 
@@ -1021,14 +1062,32 @@
   }
 
   function buildWorldTourJourney() {
-    const plan = FLIGHT_DATA.worldTour.continentOrder.map((key) => {
+    const makePlan = (counts) => FLIGHT_DATA.worldTour.continentOrder.map((key, index) => {
       const continent = FLIGHT_DATA.worldTour.continents[key];
-      const count = 2 + Math.floor(Math.random() * 4);
+      const count = counts[index];
       // 국가를 섞지 않고, 대륙의 진입·이탈 방향에 맞춘 인접 국가 묶음을 사용한다.
       // 따라서 매번 2~5개 나라를 고르면서도 경로가 되돌아가거나 교차하지 않는다.
       const countries = (continent.routeGroups?.[count] || continent.countries.slice(0, count)).slice();
       return { key, label: continent.label, countries };
     });
+
+    let counts = [];
+    let plan = [];
+    let signature = "";
+    // 새 여정은 바로 직전 세계일주와 적어도 한 대륙의 선택이 반드시 다르도록 한다.
+    for (let attempt = 0; attempt < 8; attempt++) {
+      counts = FLIGHT_DATA.worldTour.continentOrder.map(() => 2 + Math.floor(Math.random() * 4));
+      plan = makePlan(counts);
+      signature = plan.map(({ countries }) => countries.join(",")).join("|");
+      if (signature !== lastWorldTourSignature) break;
+    }
+    if (signature === lastWorldTourSignature) {
+      const changedIndex = Math.floor(Math.random() * counts.length);
+      counts[changedIndex] = counts[changedIndex] === 5 ? 2 : counts[changedIndex] + 1;
+      plan = makePlan(counts);
+      signature = plan.map(({ countries }) => countries.join(",")).join("|");
+    }
+    lastWorldTourSignature = signature;
     const route = [];
     plan.forEach(({ countries }) => {
       const previousCountry = route.at(-1);

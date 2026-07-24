@@ -1943,6 +1943,7 @@ body {
 
 .jeju-marker.heritage,
 .jeju-marker.history { background: #9d6040; }
+.jeju-marker.oreum { background: #a86d31; }
 .jeju-marker.sponsored { background: #c7792d; }
 
 .journey-active .jeju-marker:not(.selected-route) {
@@ -1998,6 +1999,25 @@ body {
 .jeju-mode .stat { background: rgba(245, 255, 245, 0.96); }
 .jeju-mode .hud,
 .jeju-mode .input-bar { background: rgba(3, 55, 48, 0.96); }
+.jeju-mode .hud {
+  border-color: rgba(207, 255, 222, 0.36);
+  box-shadow: inset 0 1px rgba(234, 255, 238, 0.16), inset 0 -5px 12px rgba(0, 16, 12, 0.24);
+}
+.jeju-mode .hud::before {
+  border-color: rgba(229, 255, 238, 0.5);
+  box-shadow: 0 0 9px rgba(80, 244, 173, 0.2);
+}
+.jeju-mode .hud .step-label {
+  color: #baf8d4;
+  text-shadow: 0 1px 2px rgba(0, 29, 20, 0.92);
+}
+.jeju-mode .hud .prev-station,
+.jeju-mode .hud .next-station,
+.jeju-mode .hud .after-next-station {
+  color: #f1fff5 !important;
+  text-shadow: 0 1px 3px rgba(0, 29, 20, 0.95);
+}
+.jeju-mode .hud .station-node { background: #f7fff8; }
 .jeju-mode .route-tag { background: #1da673; color: #f7fff4; }
 .jeju-mode .station-label.jeju-label {
   border-color: rgba(7, 74, 59, 0.9);

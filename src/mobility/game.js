@@ -192,6 +192,21 @@
     return [station.lat, flightDisplayLongitude(station.lng, referenceLng)];
   }
 
+  // 카메라 위치가 일시적으로 다른 세계 사본을 보고 있더라도, 현재 여정이
+  // 선택한 경도 사본을 유지한다. 날짜 변경선 주변에서 인도양 쪽으로 튀는 것을 막는다.
+  function flightJourneyDisplayPoint(name) {
+    const station = FLIGHT_DATA.stations[name];
+    if (!station) return null;
+    const isCurrent = name === state.currentStation;
+    const journeyPoint = state.journeyDisplayPoints[isCurrent
+      ? state.journeyIndex
+      : state.journeyIndex + 1];
+    if (journeyPoint) return journeyPoint;
+
+    const currentPoint = state.journeyDisplayPoints[state.journeyIndex];
+    return flightDisplayPoint(station, currentPoint?.[1]);
+  }
+
   function unwrapFlightPath(points, referenceLng = map.getCenter().lng) {
     let previousLng = referenceLng;
     return points.map(([lat, lng]) => {
@@ -445,10 +460,20 @@
   const continentByCountryName = new Map();
   let flightHighlightRequest = 0;
   let flightFocusFallbackTimer = null;
+  let flightFocusFallbackRequest = 0;
   // 해외 영토가 넓게 퍼져 있는 나라는 전체 GeoJSON 경계로 확대하면 세계 전경으로 밀릴 수 있다.
   // 학습용 상세 화면에서는 본토 중심 범위를 우선 사용한다.
   const COUNTRY_FOCUS_BOUNDS = {
     US: [[24.2, -125.2], [49.7, -66.3]],
+    // 날짜 변경선을 걸치는 섬나라는 전체 GeoJSON 경계가 거의 한 바퀴를 감싸기도 한다.
+    // 학습에 쓰는 본섬 범위는 한쪽 세계 사본 안에서 명시적으로 고정한다.
+    NZ: [[-48.5, 165.5], [-33.0, 179.8]],
+    FJ: [[-21.8, 176.5], [-15.8, 182.0]],
+    WS: [[-15.0, -173.2], [-13.3, -171.2]],
+    AU: [[-43.8, 112.0], [-10.0, 154.0]],
+  };
+  const COUNTRY_FOCUS_ZOOMS = {
+    US: 4.3,
   };
 
   Object.values(FLIGHT_DATA.worldTour.continents).forEach((continent) => {
@@ -522,6 +547,8 @@
 
   function flightDetailZoom(station) {
     if (station.focusZoom) return station.focusZoom;
+    const iso2 = station.iso2 || FLIGHT_DATA.countryIso2?.[station.name];
+    if (COUNTRY_FOCUS_ZOOMS[iso2]) return COUNTRY_FOCUS_ZOOMS[iso2];
     if (station.kind !== "water") return 5.4;
     const radius = station.radiusKm || 900;
     if (radius <= 220) return 7.1;
@@ -530,12 +557,22 @@
     return 4.25;
   }
 
+  function flightCameraDuration(target) {
+    const source = map.getCenter();
+    const longitudeDistance = Math.abs(target.lng - source.lng);
+    const distance = Math.hypot(target.lat - source.lat, longitudeDistance * 0.72);
+    return Math.max(0.65, Math.min(1.65, 0.58 + distance / 165));
+  }
+
   function focusFlightFallback(station, displayPoint = flightDisplayPoint(station)) {
-    map.stop();
     map.invalidateSize({ pan: false });
-    map.setView(displayPoint, flightDetailZoom(station), {
-      animate: false,
-      pan: { animate: false },
+    const target = L.latLng(displayPoint);
+    // flyTo는 멀리 이동할 때 중간에 세계 전경까지 축소하는 곡선 궤적을 만든다.
+    // setView 애니메이션은 현재 축척을 유지한 채 목표 축척·위치로 연속 전환한다.
+    map.setView(target, flightDetailZoom(station), {
+      animate: true,
+      duration: flightCameraDuration(target),
+      easeLinearity: 0.22,
     });
   }
 
@@ -544,13 +581,14 @@
     const compact = window.innerWidth <= 720;
     const size = map.getSize();
     const horizontalPadding = Math.round(Math.min(compact ? 56 : 138, size.x * (compact ? 0.16 : 0.17)));
-    map.stop();
-    map.flyToBounds(bounds, {
+    const target = bounds.getCenter();
+    map.fitBounds(bounds, {
       paddingTopLeft: [horizontalPadding, compact ? 150 : 128],
       paddingBottomRight: [horizontalPadding, compact ? 104 : 112],
       maxZoom,
       animate: true,
-      duration: 0.7,
+      duration: flightCameraDuration(target),
+      easeLinearity: 0.22,
     });
   }
 
@@ -559,21 +597,27 @@
     return L.latLngBounds(bounds.map(([lat, lng]) => [lat, lng + longitudeOffset]));
   }
 
-  async function highlightFlightGeography(name, { focus = false } = {}) {
+  async function highlightFlightGeography(name, { focus = false, displayPoint: requestedDisplayPoint = null } = {}) {
     const station = FLIGHT_DATA.stations[name];
     if (!station) return;
     const request = ++flightHighlightRequest;
-    const displayPoint = flightDisplayPoint(station);
+    const fallbackRequest = ++flightFocusFallbackRequest;
+    const displayPoint = requestedDisplayPoint || flightJourneyDisplayPoint(name) || flightDisplayPoint(station);
+    let fallbackStarted = false;
     clearTimeout(flightFocusFallbackTimer);
     flightFocusFallbackTimer = null;
     flightGeographyLayer.clearLayers();
 
-    // 경계 데이터를 받는 동안 전체 지도에 머물지 않도록 먼저 해당 지역으로 이동한다.
-    // 정상 응답이 빠르면 아래 경계 범위 이동만 실행되어 카메라가 한 번만 움직인다.
+    // 경계 데이터가 늦을 때에만 같은 여정 경도 사본으로 한 번 부드럽게 이동한다.
+    // 이후 경계가 도착해도 이미 시작한 카메라를 다시 끊지 않는다.
     if (focus) {
       flightFocusFallbackTimer = setTimeout(() => {
-        if (request === flightHighlightRequest) focusFlightFallback(station, displayPoint);
-      }, 140);
+        if (request === flightHighlightRequest && fallbackRequest === flightFocusFallbackRequest) {
+          fallbackStarted = true;
+          flightFocusFallbackTimer = null;
+          focusFlightFallback(station, displayPoint);
+        }
+      }, 420);
     }
 
     if (station.kind === "landmark") {
@@ -590,7 +634,7 @@
       if (focus) {
         clearTimeout(flightFocusFallbackTimer);
         flightFocusFallbackTimer = null;
-        focusFlightBounds(landmarkArea.getBounds(), flightDetailZoom(station));
+        if (!fallbackStarted) focusFlightBounds(landmarkArea.getBounds(), flightDetailZoom(station));
       }
       return;
     }
@@ -610,7 +654,7 @@
       if (focus) {
         clearTimeout(flightFocusFallbackTimer);
         flightFocusFallbackTimer = null;
-        focusFlightBounds(waterArea.getBounds(), flightDetailZoom(station));
+        if (!fallbackStarted) focusFlightBounds(waterArea.getBounds(), flightDetailZoom(station));
       }
       return;
     }
@@ -653,7 +697,7 @@
       const cameraBounds = preferredBounds
         ? displayFlightBounds(preferredBounds, displayPoint[1] - station.lng)
         : bounds;
-      focusFlightBounds(cameraBounds, station.focusZoom || 6.3);
+      if (!fallbackStarted) focusFlightBounds(cameraBounds, station.focusZoom || 6.3);
     }
   }
 

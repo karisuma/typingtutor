@@ -2086,6 +2086,132 @@ body.flight-mode {
 
 .flight-mode .mode-tabs { display: none !important; }
 
+/* 밝은 통계 카드 위에서는 값도 어두운 색으로 고정해 숫자가 사라지지 않게 한다. */
+.flight-mode .stat {
+  border-color: #c7e3ee;
+  background: #f8fdff;
+  box-shadow: 0 3px 12px rgba(4, 62, 91, 0.16);
+}
+
+.flight-mode .stat-label { color: #376b83; }
+.flight-mode .stat-value { color: #075b82; }
+.flight-mode .stat-value.accent { color: #007b5d; }
+
+/* 세계일주에서는 현재 입력 대상만 이름을 읽을 수 있게 크게 표시한다.
+   나머지 경유지는 텍스트가 아닌 흐릿한 점으로 남겨 지도 겹침을 없앤다. */
+.flight-mode.journey-active .route-stop-label.flight-stop-label {
+  width: 9px;
+  max-width: none;
+  height: 9px;
+  min-height: 0;
+  padding: 0;
+  border: 2px solid rgba(219, 249, 255, 0.8);
+  border-radius: 50%;
+  background: rgba(7, 104, 156, 0.6);
+  box-shadow: 0 0 0 3px rgba(74, 214, 255, 0.13);
+  opacity: 0.3;
+  transform: translate(-50%, -50%) !important;
+}
+
+.flight-mode.journey-active .route-stop-label.flight-stop-label span,
+.flight-mode.journey-active .route-stop-label.flight-stop-label strong {
+  display: none;
+}
+
+.flight-mode.journey-active .route-stop-label.flight-stop-label.completed {
+  opacity: 0.16;
+}
+
+.flight-mode.journey-active .route-stop-label.flight-stop-label.next {
+  width: 12px;
+  height: 12px;
+  border-color: rgba(172, 239, 255, 0.92);
+  background: rgba(21, 157, 214, 0.82);
+  opacity: 0.58;
+}
+
+.flight-mode.journey-active .route-stop-label.flight-stop-label.current {
+  display: flex;
+  width: max-content;
+  max-width: 180px;
+  min-height: 28px;
+  padding: 6px 12px 6px 6px;
+  border: 2px solid #d9fbff;
+  border-radius: 999px;
+  background: #063e67;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 900;
+  opacity: 1;
+  box-shadow: 0 0 0 5px rgba(81, 221, 255, 0.24), 0 8px 22px rgba(0, 32, 66, 0.52);
+}
+
+.flight-mode.journey-active .route-stop-label.flight-stop-label.current span {
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  background: #baf6ff;
+  color: #063e67;
+  font-size: 10px;
+}
+
+.flight-mode.journey-active .route-stop-label.flight-stop-label.current strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flight-mode.journey-active .route-stop-label.flight-stop-label.current.above {
+  transform: translate(-50%, -58px) !important;
+}
+
+.flight-mode.journey-active .route-stop-label.flight-stop-label.current.below {
+  transform: translate(-50%, 30px) !important;
+}
+
+.flight-mode.journey-active .flight-airspace-marker.selected-route,
+.flight-mode.journey-active .flight-water-marker.selected-route {
+  width: 7px;
+  height: 7px;
+  margin: 0;
+  border-width: 2px;
+  box-shadow: 0 0 0 2px rgba(230, 252, 255, 0.3);
+  opacity: 0.32;
+}
+
+.flight-mode.journey-active .flight-water-marker.selected-route {
+  transform: rotate(45deg);
+}
+
+.flight-mode.journey-active .flight-airspace-marker.selected-route.completed-route,
+.flight-mode.journey-active .flight-water-marker.selected-route.completed-route {
+  opacity: 0.16;
+}
+
+.flight-mode.journey-active .flight-airspace-marker.selected-route.next-route,
+.flight-mode.journey-active .flight-water-marker.selected-route.next-route {
+  width: 12px;
+  height: 12px;
+  margin: -2px;
+  opacity: 0.62;
+}
+
+.flight-mode.journey-active .flight-airspace-marker.selected-route.current-route,
+.flight-mode.journey-active .flight-water-marker.selected-route.current-route {
+  width: 22px;
+  height: 22px;
+  margin: -7px;
+  border-width: 4px;
+  border-color: #e6fdff;
+  background: #0ea9de;
+  box-shadow: 0 0 0 6px rgba(78, 221, 255, 0.29), 0 0 26px rgba(51, 213, 255, 0.96);
+  opacity: 1;
+}
+
+.flight-mode.journey-active .flight-water-marker.selected-route.current-route {
+  transform: rotate(45deg);
+}
+
 @media (max-width: 720px) {
   .flight-mode .route-stop-label.flight-stop-label { font-size: 11px; }
   .flight-mode .flight-help { font-size: 11px; }

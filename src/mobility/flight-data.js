@@ -94,7 +94,8 @@ const FLIGHT_DATA = {
     // 실제 항로에서 해상·해협을 건너는 나라 쌍만 지정한다.
     // 선택된 나라 수가 달라져도, 육지 구간에 바다를 억지로 넣지 않는다.
     routeWaterways: {
-      "WT_ASIA_JP|WT_ASIA_KR": ["WT_STRAIT_KOREA"],
+      // 일본에서 대한민국으로 갈 때는 동해와 독도를 차례로 지나며 위치를 익힌다.
+      "WT_ASIA_JP|WT_ASIA_KR": ["WT_SEA_EAST", "WT_ASIA_DOKDO"],
       "WT_ASIA_KR|WT_ASIA_CN": ["WT_SEA_YELLOW"],
       "WT_ASIA_IN|WT_EU_FR": ["WT_SEA_ARABIAN", "WT_SEA_RED", "WT_SEA_MEDITERRANEAN"],
       "WT_ASIA_IN|WT_EU_IT": ["WT_SEA_ARABIAN", "WT_SEA_RED", "WT_SEA_MEDITERRANEAN"],
@@ -201,6 +202,10 @@ const FLIGHT_DATA = {
     DOH_IST_SA: { name: "사우디아라비아", en: "Saudi Arabia", lat: 29.0, lng: 45.0 },
     DOH_IST_TR: { name: "튀르키예", en: "Türkiye", lat: 41.2753, lng: 28.7519 },
     WT_ASIA_KR: { name: "대한민국", en: "South Korea", lat: 36.5, lng: 127.8 },
+    WT_ASIA_DOKDO: {
+      name: "독도", en: "Dokdo", kind: "landmark", lat: 37.2411, lng: 131.8650,
+      focusZoom: 8.1, radiusKm: 24, description: "대한민국 동쪽 동해에 있는 화산섬으로, 울릉도에서 약 87km 떨어져 있습니다.",
+    },
     WT_ASIA_JP: { name: "일본", en: "Japan", lat: 36.2, lng: 138.3 },
     WT_ASIA_CN: { name: "중국", en: "China", lat: 35.9, lng: 104.2 },
     WT_ASIA_IN: { name: "인도", en: "India", lat: 22.9, lng: 78.9 },
@@ -233,6 +238,10 @@ const FLIGHT_DATA = {
     WT_STRAIT_KOREA: {
       name: "대한해협", en: "Korea Strait", kind: "water", lat: 34.4, lng: 129.2,
       radiusKm: 180, focusZoom: 7.2, description: "대한민국과 일본 사이, 동해 남서부의 해협",
+    },
+    WT_SEA_EAST: {
+      name: "동해", en: "East Sea", kind: "water", lat: 37.1, lng: 135.0,
+      radiusKm: 340, focusZoom: 6.5, description: "대한민국 동쪽과 일본 사이에 있는 바다로, 독도가 위치한 해역입니다.",
     },
     WT_SEA_YELLOW: {
       name: "황해", en: "Yellow Sea", kind: "water", lat: 35.3, lng: 123.5,

@@ -1835,6 +1835,18 @@ body {
   box-shadow: 0 0 0 5px rgba(69, 215, 255, 0.22), 0 0 22px rgba(69, 215, 255, 0.86);
 }
 
+.flight-airspace-marker.flight-landmark-marker {
+  width: 15px;
+  height: 15px;
+  border-color: #fff3a2;
+  background: #159de0;
+  box-shadow: 0 0 0 4px rgba(255, 224, 94, 0.28), 0 0 16px rgba(255, 232, 110, 0.9);
+}
+
+.flight-landmark-highlight {
+  filter: drop-shadow(0 0 9px rgba(255, 238, 137, 0.94));
+}
+
 .flight-water-marker {
   width: 13px;
   height: 13px;
@@ -1917,6 +1929,82 @@ body {
 .geo-study-card strong { font-size: 20px; font-weight: 900; letter-spacing: -0.04em; }
 .geo-study-card > span:not(.geo-study-category) { color: #d8f8ff; font-size: 12px; font-weight: 750; }
 .geo-study-card p { margin: 2px 0 0; color: #b5d9e6; font-size: 11px; font-weight: 650; line-height: 1.45; }
+
+/* 제주 여행: 자연·명승·역사문화 장소만 기본으로 표시한다. */
+.jeju-marker {
+  width: 14px;
+  height: 14px;
+  border: 3px solid #f7fff6;
+  border-radius: 50%;
+  background: #218d66;
+  box-shadow: 0 0 0 3px rgba(28, 113, 80, 0.26), 0 2px 7px rgba(14, 65, 44, 0.42);
+  transition: opacity 0.2s ease, filter 0.2s ease, transform 0.2s ease;
+}
+
+.jeju-marker.heritage,
+.jeju-marker.history { background: #9d6040; }
+.jeju-marker.sponsored { background: #c7792d; }
+
+.journey-active .jeju-marker:not(.selected-route) {
+  opacity: 0.12;
+  filter: grayscale(0.8);
+}
+
+.jeju-marker.selected-route {
+  width: 19px;
+  height: 19px;
+  margin: -3px;
+  border: 4px solid var(--route-color, #15835c);
+  background: #fffbe9;
+  opacity: 1;
+  box-shadow: 0 0 0 5px rgba(34, 150, 103, 0.22), 0 5px 12px rgba(10, 67, 44, 0.35);
+}
+
+.jeju-marker.current-route {
+  transform: scale(1.18);
+  filter: drop-shadow(0 0 7px rgba(255, 247, 179, 0.96));
+}
+
+.jeju-study-card {
+  position: fixed;
+  top: 88px;
+  left: 16px;
+  z-index: 14;
+  display: grid;
+  width: min(238px, calc(100vw - 32px));
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(225, 255, 201, 0.88);
+  border-radius: 15px;
+  background: rgba(7, 67, 55, 0.9);
+  color: #f7fff4;
+  box-shadow: 0 9px 24px rgba(0, 50, 37, 0.32), inset 0 0 20px rgba(123, 222, 154, 0.12);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.jeju-study-card.hidden { display: none; }
+.jeju-study-category { color: #d9ffad; font-size: 10px; font-weight: 900; letter-spacing: 0.08em; }
+.jeju-study-card strong { font-size: 20px; font-weight: 900; letter-spacing: -0.04em; }
+.jeju-study-card > span:not(.jeju-study-category) { color: #d9f7e8; font-size: 12px; font-weight: 750; }
+.jeju-study-card p { margin: 2px 0 0; color: #c0e5d3; font-size: 11px; font-weight: 650; line-height: 1.45; }
+
+.jeju-mode .topbar {
+  background: rgba(4, 54, 48, 0.96);
+  border-bottom-color: rgba(187, 246, 193, 0.32);
+  color: #f5fff5;
+}
+.jeju-mode .brand-icon { background: linear-gradient(135deg, #48c58f, #11725d); color: #fff; }
+.jeju-mode .stat { background: rgba(245, 255, 245, 0.96); }
+.jeju-mode .hud,
+.jeju-mode .input-bar { background: rgba(3, 55, 48, 0.96); }
+.jeju-mode .route-tag { background: #1da673; color: #f7fff4; }
+.jeju-mode .station-label.jeju-label {
+  border-color: rgba(7, 74, 59, 0.9);
+  background: rgba(250, 255, 246, 0.96);
+  color: #0b4535;
+  font-weight: 850;
+}
 
 .flight-airport-marker {
   display: grid;

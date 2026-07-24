@@ -65,12 +65,16 @@
   const highwayLayer = L.layerGroup();
   const flightLayer = L.layerGroup();
   const flightGeographyLayer = L.layerGroup();
+  const jejuLayer = L.layerGroup();
+  const jejuHighlightLayer = L.layerGroup();
   const subwayLineLayers = [];
   const highwayLineLayers = [];
   const flightLineLayers = [];
+  const jejuLineLayers = [];
   const subwaySegmentPaths = new Map();
   const highwaySegmentPaths = new Map();
   const flightSegmentPaths = new Map();
+  const jejuSegmentPaths = new Map();
   const LINE_SMOOTHING_SEGMENTS = 12;
 
   // 라벨 포함된 밝은 베이스 — 게임 분위기를 위해 단독으로 사용하지 않고 어두운 타일 사용
@@ -115,7 +119,11 @@
 
     if (stationLatLngs.length < 2) return;
     const latlngs = smoothLatLngs(stationLatLngs, LINE_SMOOTHING_SEGMENTS);
-    const segmentStore = data === HIGHWAY_DATA ? highwaySegmentPaths : subwaySegmentPaths;
+    const segmentStore = data === HIGHWAY_DATA
+      ? highwaySegmentPaths
+      : data === JEJU_ACTIVE_DATA
+        ? jejuSegmentPaths
+        : subwaySegmentPaths;
     for (let index = 0; index < geometryStops.length - 1; index++) {
       const from = geometryStops[index];
       const to = geometryStops[index + 1];
@@ -150,13 +158,20 @@
       className: `line-${lineKey}`,
     }).addTo(layer);
 
-    const collection = data === HIGHWAY_DATA ? highwayLineLayers : subwayLineLayers;
+    const collection = data === HIGHWAY_DATA
+      ? highwayLineLayers
+      : data === JEJU_ACTIVE_DATA
+        ? jejuLineLayers
+        : subwayLineLayers;
     collection.push({ outline, body, width });
   }
 
   Object.entries(SUBWAY_DATA.lines).forEach(([key, line]) => drawLine(key, line));
   Object.entries(HIGHWAY_DATA.lines).forEach(([key, line]) =>
     drawLine(key, line, HIGHWAY_DATA, highwayLayer, 4)
+  );
+  Object.entries(JEJU_ACTIVE_DATA.lines).forEach(([key, line]) =>
+    drawLine(key, line, JEJU_ACTIVE_DATA, jejuLayer, 5)
   );
 
   function normalizeLongitude(lng) {
@@ -352,9 +367,32 @@
     highwayMarkers.set(name, marker);
   });
 
+  const jejuMarkers = new Map();
+  const jejuTransferStations = new Set(JEJU_ACTIVE_DATA.transfers.flat());
+  Object.entries(JEJU_ACTIVE_DATA.stations).forEach(([name, station]) => {
+    const marker = L.marker([station.lat, station.lng], {
+      icon: L.divIcon({
+        className: "",
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+        html: `<div class="jeju-marker ${station.category || "nature"}" aria-label="${station.name}"></div>`,
+      }),
+      keyboard: false,
+    })
+      .addTo(jejuLayer)
+      .bindTooltip(station.name, {
+        direction: "top",
+        offset: [0, -10],
+        className: "station-label jeju-label",
+      });
+    jejuMarkers.set(name, marker);
+  });
+
   const flightMarkers = new Map();
   Object.entries(FLIGHT_DATA.stations).forEach(([name, station]) => {
-    const markerClass = station.kind === "water" ? "flight-water-marker" : "flight-airspace-marker";
+    const markerClass = station.kind === "water"
+      ? "flight-water-marker"
+      : `flight-airspace-marker${station.kind === "landmark" ? " flight-landmark-marker" : ""}`;
     const icon = L.divIcon({
       className: "",
       iconSize: [12, 12],
@@ -397,6 +435,7 @@
   let activeMarkers = stationMarkers;
   let activeTransferStations = transferStations;
   let setupMode = "world-tour";
+  let lastWorldTourSignature = "";
 
   // 현재 타이핑 대상의 실제 국가 경계는 필요할 때만 불러와 캐시한다.
   // Esri World Countries 일반화 경계는 현재 사용 중인 위성/지명 타일과 같은 제공처다.
@@ -406,6 +445,11 @@
   const continentByCountryName = new Map();
   let flightHighlightRequest = 0;
   let flightFocusFallbackTimer = null;
+  // 해외 영토가 넓게 퍼져 있는 나라는 전체 GeoJSON 경계로 확대하면 세계 전경으로 밀릴 수 있다.
+  // 학습용 상세 화면에서는 본토 중심 범위를 우선 사용한다.
+  const COUNTRY_FOCUS_BOUNDS = {
+    US: [[24.2, -125.2], [49.7, -66.3]],
+  };
 
   Object.values(FLIGHT_DATA.worldTour.continents).forEach((continent) => {
     continent.countries.forEach((id) => {
@@ -434,7 +478,7 @@
   }
 
   function flightStudyIcon(station) {
-    const type = station.kind === "water" ? "해역" : "나라";
+    const type = station.kind === "water" ? "해역" : station.kind === "landmark" ? "대한민국 지리" : "나라";
     return L.divIcon({
       className: "",
       iconSize: [1, 1],
@@ -451,18 +495,23 @@
       return;
     }
     const isWater = station.kind === "water";
+    const isLandmark = station.kind === "landmark";
     const continent = continentByCountryName.get(station.name) || "세계 주요 지역";
-    $("#geoStudyCategory").textContent = isWater ? "해역 · 세계 지리" : `나라 · ${continent}`;
+    $("#geoStudyCategory").textContent = isWater
+      ? "해역 · 세계 지리"
+      : isLandmark
+        ? "대한민국 · 동해"
+        : `나라 · ${continent}`;
     $("#geoStudyName").textContent = station.name;
     $("#geoStudyEnglish").textContent = station.en || station.name;
-    $("#geoStudyDescription").textContent = isWater
-      ? station.description || "비행 경로가 지나는 주요 해역"
+    $("#geoStudyDescription").textContent = isWater || isLandmark
+      ? station.description || "비행 경로가 지나는 주요 지리 학습 지점"
       : `${continent}의 나라 · 지도에서 실제 국경선과 위치를 확인하세요.`;
     card.classList.remove("hidden");
 
-    $("#currentRole").textContent = isWater ? "현재 해역" : "현재 영공";
-    $("#nextRole").textContent = isWater ? "다음 해역 →" : "다음 영공 →";
-    $("#afterNextRole").textContent = isWater ? "다다음 해역 →" : "다다음 영공 →";
+    $("#currentRole").textContent = isWater ? "현재 해역" : isLandmark ? "현재 지점" : "현재 영공";
+    $("#nextRole").textContent = isWater ? "다음 해역 →" : isLandmark ? "다음 지점 →" : "다음 영공 →";
+    $("#afterNextRole").textContent = isWater ? "다다음 해역 →" : isLandmark ? "다다음 지점 →" : "다다음 영공 →";
   }
 
   function clearFlightGeography() {
@@ -505,6 +554,11 @@
     });
   }
 
+  function displayFlightBounds(bounds, longitudeOffset = 0) {
+    if (!bounds) return null;
+    return L.latLngBounds(bounds.map(([lat, lng]) => [lat, lng + longitudeOffset]));
+  }
+
   async function highlightFlightGeography(name, { focus = false } = {}) {
     const station = FLIGHT_DATA.stations[name];
     if (!station) return;
@@ -520,6 +574,25 @@
       flightFocusFallbackTimer = setTimeout(() => {
         if (request === flightHighlightRequest) focusFlightFallback(station, displayPoint);
       }, 140);
+    }
+
+    if (station.kind === "landmark") {
+      const landmarkArea = L.circle(displayPoint, {
+        radius: (station.radiusKm || 24) * 1000,
+        color: "#fff2a6",
+        weight: 3.5,
+        opacity: 1,
+        fillColor: "#1fc9ff",
+        fillOpacity: 0.3,
+        interactive: false,
+        className: "flight-landmark-highlight",
+      }).addTo(flightGeographyLayer);
+      if (focus) {
+        clearTimeout(flightFocusFallbackTimer);
+        flightFocusFallbackTimer = null;
+        focusFlightBounds(landmarkArea.getBounds(), flightDetailZoom(station));
+      }
+      return;
     }
 
     if (station.kind === "water") {
@@ -576,7 +649,11 @@
     if (focus) {
       clearTimeout(flightFocusFallbackTimer);
       flightFocusFallbackTimer = null;
-      focusFlightBounds(bounds, station.focusZoom || 6.3);
+      const preferredBounds = station.focusBounds || COUNTRY_FOCUS_BOUNDS[iso2];
+      const cameraBounds = preferredBounds
+        ? displayFlightBounds(preferredBounds, displayPoint[1] - station.lng)
+        : bounds;
+      focusFlightBounds(cameraBounds, station.focusZoom || 6.3);
     }
   }
 
@@ -668,6 +745,11 @@
       return starting
         ? "출발 영공 이름을 입력해 이륙하세요"
         : "지나는 나라·바다 이름을 입력해 비행하세요";
+    }
+    if (activeMode === "jeju") {
+      return starting
+        ? "출발 명소 이름을 입력해 여행을 시작하세요"
+        : "다음 제주 명소 이름을 입력해 이동하세요";
     }
     if (activeMode === "highway") {
       return starting ? "출발 지역 이름을 입력해 시작하세요" : "지역 이름을 입력해 이동하세요";
@@ -852,9 +934,11 @@
   function railSegmentPath(from, to, lineKey) {
     const segmentStore = activeMode === "flight"
       ? flightSegmentPaths
-      : activeMode === "highway"
-        ? highwaySegmentPaths
-        : subwaySegmentPaths;
+      : activeMode === "jeju"
+        ? jejuSegmentPaths
+        : activeMode === "highway"
+          ? highwaySegmentPaths
+          : subwaySegmentPaths;
     const exact = lineKey ? segmentStore.get(`${lineKey}|${from}|${to}`) : null;
     if (exact?.length >= 2) return exact;
 
@@ -978,14 +1062,32 @@
   }
 
   function buildWorldTourJourney() {
-    const plan = FLIGHT_DATA.worldTour.continentOrder.map((key) => {
+    const makePlan = (counts) => FLIGHT_DATA.worldTour.continentOrder.map((key, index) => {
       const continent = FLIGHT_DATA.worldTour.continents[key];
-      const count = 2 + Math.floor(Math.random() * 4);
+      const count = counts[index];
       // 국가를 섞지 않고, 대륙의 진입·이탈 방향에 맞춘 인접 국가 묶음을 사용한다.
       // 따라서 매번 2~5개 나라를 고르면서도 경로가 되돌아가거나 교차하지 않는다.
       const countries = (continent.routeGroups?.[count] || continent.countries.slice(0, count)).slice();
       return { key, label: continent.label, countries };
     });
+
+    let counts = [];
+    let plan = [];
+    let signature = "";
+    // 새 여정은 바로 직전 세계일주와 적어도 한 대륙의 선택이 반드시 다르도록 한다.
+    for (let attempt = 0; attempt < 8; attempt++) {
+      counts = FLIGHT_DATA.worldTour.continentOrder.map(() => 2 + Math.floor(Math.random() * 4));
+      plan = makePlan(counts);
+      signature = plan.map(({ countries }) => countries.join(",")).join("|");
+      if (signature !== lastWorldTourSignature) break;
+    }
+    if (signature === lastWorldTourSignature) {
+      const changedIndex = Math.floor(Math.random() * counts.length);
+      counts[changedIndex] = counts[changedIndex] === 5 ? 2 : counts[changedIndex] + 1;
+      plan = makePlan(counts);
+      signature = plan.map(({ countries }) => countries.join(",")).join("|");
+    }
+    lastWorldTourSignature = signature;
     const route = [];
     plan.forEach(({ countries }) => {
       const previousCountry = route.at(-1);
@@ -1138,9 +1240,11 @@
     document.body.classList.toggle("journey-active", active);
     const lineLayers = activeMode === "flight"
       ? flightLineLayers
-      : activeMode === "highway"
-        ? highwayLineLayers
-        : subwayLineLayers;
+      : activeMode === "jeju"
+        ? jejuLineLayers
+        : activeMode === "highway"
+          ? highwayLineLayers
+          : subwayLineLayers;
     const selectedFlightLines = new Set(state.journeyLines.filter(Boolean));
     lineLayers.forEach(({ key, outline, body, width }) => {
       const baseOutlineOpacity = activeMode === "flight" ? 0.18 : 0.92;
@@ -1160,7 +1264,7 @@
 
     activeMarkers.forEach((marker) => {
       const element = marker.getElement();
-      const dot = element && element.querySelector(".station-marker, .highway-marker, .flight-airspace-marker, .flight-water-marker");
+      const dot = element && element.querySelector(".station-marker, .highway-marker, .jeju-marker, .flight-airspace-marker, .flight-water-marker");
       if (dot) {
         dot.classList.remove("selected-route");
         dot.style.removeProperty("--route-color");
@@ -1169,7 +1273,7 @@
     route.forEach((name, index) => {
       const marker = activeMarkers.get(name);
       const element = marker && marker.getElement();
-      const dot = element && element.querySelector(".station-marker, .highway-marker, .flight-airspace-marker, .flight-water-marker");
+      const dot = element && element.querySelector(".station-marker, .highway-marker, .jeju-marker, .flight-airspace-marker, .flight-water-marker");
       if (dot) {
         const lineKey = state.journeyLines[index] || state.journeyLines[index - 1];
         dot.style.setProperty("--route-color", routeLineColor(lineKey));
@@ -1191,7 +1295,7 @@
     state.journey.forEach((name, index) => {
       const marker = activeMarkers.get(name);
       const element = marker && marker.getElement();
-      const dot = element && element.querySelector(".station-marker, .highway-marker, .flight-airspace-marker, .flight-water-marker");
+      const dot = element && element.querySelector(".station-marker, .highway-marker, .jeju-marker, .flight-airspace-marker, .flight-water-marker");
       if (!dot) return;
       dot.classList.toggle("current-route", index === targetIndex);
       dot.classList.toggle("next-route", index === targetIndex + 1);
@@ -1232,6 +1336,7 @@
     activeMode = mode;
     document.body.classList.toggle("highway-mode", mode === "highway");
     document.body.classList.toggle("flight-mode", mode === "flight");
+    document.body.classList.toggle("jeju-mode", mode === "jeju");
     trainMarker.setIcon(mode === "flight" ? flightIcon : trainIcon);
     if (mode === "flight") {
       if (map.hasLayer(lightBaseLayer)) map.removeLayer(lightBaseLayer);
@@ -1240,6 +1345,9 @@
       flightReferenceLayer.addTo(map);
       if (map.hasLayer(subwayLayer)) map.removeLayer(subwayLayer);
       if (map.hasLayer(highwayLayer)) map.removeLayer(highwayLayer);
+      if (map.hasLayer(jejuLayer)) map.removeLayer(jejuLayer);
+      if (map.hasLayer(jejuHighlightLayer)) map.removeLayer(jejuHighlightLayer);
+      clearJejuStudy();
       flightLayer.addTo(map);
       flightGeographyLayer.addTo(map);
       clearFlightGeography();
@@ -1274,6 +1382,66 @@
       map.setMinZoom(3);
       map.setMaxBounds(FLIGHT_ACTIVE_BOUNDS);
       map.fitBounds([[-55, -350], [72, 350]], { padding: [28, 28] });
+    } else if (mode === "jeju") {
+      if (map.hasLayer(darkBaseLayer)) map.removeLayer(darkBaseLayer);
+      if (map.hasLayer(lightBaseLayer)) map.removeLayer(lightBaseLayer);
+      flightSatelliteLayer.addTo(map);
+      flightReferenceLayer.addTo(map);
+      if (map.hasLayer(subwayLayer)) map.removeLayer(subwayLayer);
+      if (map.hasLayer(highwayLayer)) map.removeLayer(highwayLayer);
+      if (map.hasLayer(flightLayer)) map.removeLayer(flightLayer);
+      if (map.hasLayer(flightGeographyLayer)) map.removeLayer(flightGeographyLayer);
+      if (map.hasLayer(jejuLayer)) map.removeLayer(jejuLayer);
+      if (map.hasLayer(jejuHighlightLayer)) map.removeLayer(jejuHighlightLayer);
+      clearJejuStudy();
+      clearFlightGeography();
+      window.FlightGlobe?.hide();
+      jejuLayer.addTo(map);
+      jejuHighlightLayer.addTo(map);
+      activeData = JEJU_ACTIVE_DATA;
+      activeGraph = JEJU_GRAPH;
+      activeMarkers = jejuMarkers;
+      activeTransferStations = jejuTransferStations;
+      $("#brandIcon").textContent = "🌋";
+      $("#brandTitle").textContent = "코딩101 여행가자 타자연습";
+      $("#movedLabel").textContent = "방문 명소";
+      $("#typingInstruction").textContent = JEJU_ACTIVE_DATA.meta.sponsoredDisclosure
+        ? "명소 이름을 입력해 여행하세요 · 광고 포함"
+        : "명소 이름을 입력해 제주를 여행하세요";
+      $("#previousRole").textContent = "← 이전 명소";
+      $("#currentRole").textContent = "현재 명소";
+      $("#nextRole").textContent = "다음 명소 →";
+      $("#afterNextRole").textContent = "다다음 명소 →";
+      $("#setupModeLabel").textContent = "2. 제주 여행 설정";
+      $("#countLabel").textContent = "몇 곳을 여행할까요?";
+      $("#countUnit").textContent = "개 명소";
+      $("#randomStartLabel").textContent = "시작 명소 지정";
+      $("#fromLabel").textContent = "출발 명소";
+      $("#toLabel").textContent = "도착 명소";
+      $("#customHelp").textContent = "두 제주 명소 사이의 중복 없는 연결 경로로 여행합니다.";
+      $("#randomStart").placeholder = "비워두면 제주 전역에서 랜덤";
+      $("#fromStation").placeholder = "예: 성산일출봉";
+      $("#toStation").placeholder = "예: 한라산 성판악";
+      $("#transferLegend").textContent = "여행길 선택";
+      $("#balancedHelp").textContent = "자연스럽게 명소 연결";
+      $("#transferStrongLabel").textContent = "여러 길 경험";
+      $("#transferStrongHelp").textContent = "해안·숲길을 함께 여행";
+      $("#transferMinLabel").textContent = "길 변경 최소";
+      $("#transferMinHelp").textContent = "한 길을 길게 여행";
+      $("#regionMode").innerHTML = '<option value="all">제주 전역</option>';
+      if (setupMode === "world-tour" || setupMode === "mission") setupMode = "random";
+      $("#flightModeTabs").classList.add("hidden");
+      $("#worldTourOptions").classList.add("hidden");
+      $("#flightOptions").classList.add("hidden");
+      $(".mode-tabs").classList.remove("hidden");
+      $("#randomOptions").classList.toggle("hidden", setupMode !== "random");
+      $("#customOptions").classList.toggle("hidden", setupMode !== "custom");
+      $("#randomAdvanced").classList.toggle("hidden", setupMode !== "random");
+      $("#stationCount").max = String(JEJU_ACTIVE_DATA.meta.stationCount);
+      if (Number($("#stationCount").value) > JEJU_ACTIVE_DATA.meta.stationCount) $("#stationCount").value = "12";
+      map.setMinZoom(9);
+      map.setMaxBounds(jejuBounds.pad(0.16));
+      map.fitBounds(jejuBounds, { padding: [42, 42], maxZoom: 11 });
     } else if (mode === "highway") {
       if (map.hasLayer(darkBaseLayer)) map.removeLayer(darkBaseLayer);
       if (map.hasLayer(flightSatelliteLayer)) map.removeLayer(flightSatelliteLayer);
@@ -1281,6 +1449,9 @@
       lightBaseLayer.addTo(map);
       if (map.hasLayer(flightLayer)) map.removeLayer(flightLayer);
       if (map.hasLayer(flightGeographyLayer)) map.removeLayer(flightGeographyLayer);
+      if (map.hasLayer(jejuLayer)) map.removeLayer(jejuLayer);
+      if (map.hasLayer(jejuHighlightLayer)) map.removeLayer(jejuHighlightLayer);
+      clearJejuStudy();
       clearFlightGeography();
       window.FlightGlobe?.hide();
       $("#brandIcon").textContent = "🛣️";
@@ -1322,6 +1493,8 @@
       $("#randomOptions").classList.toggle("hidden", setupMode !== "random");
       $("#customOptions").classList.toggle("hidden", setupMode !== "custom");
       $("#randomAdvanced").classList.toggle("hidden", setupMode !== "random");
+      $("#stationCount").max = "50";
+      $("#stationCount").max = "50";
       map.setMinZoom(2);
       map.setMaxBounds(null);
       map.fitBounds([[34.5, 126.0], [38.4, 129.7]], { padding: [28, 28] });
@@ -1607,6 +1780,35 @@
     );
   }
 
+  function clearJejuStudy() {
+    $("#jejuStudy")?.classList.add("hidden");
+    jejuHighlightLayer.clearLayers();
+  }
+
+  function updateJejuStudy(name) {
+    const place = JEJU_ACTIVE_DATA.stations[name];
+    if (activeMode !== "jeju" || !place) {
+      clearJejuStudy();
+      return;
+    }
+    $("#jejuStudyCategory").textContent = place.categoryLabel || "제주 명승";
+    $("#jejuStudyName").textContent = place.name;
+    $("#jejuStudyEnglish").textContent = place.en || "Jeju destination";
+    $("#jejuStudyDescription").textContent = place.description || "제주 여행지의 위치를 지도에서 확인하세요.";
+    $("#jejuStudy").classList.remove("hidden");
+
+    jejuHighlightLayer.clearLayers();
+    L.circleMarker([place.lat, place.lng], {
+      radius: 25,
+      color: "#fff6bf",
+      weight: 3,
+      fillColor: "#20b992",
+      fillOpacity: 0.24,
+      className: "jeju-target-halo",
+      interactive: false,
+    }).addTo(jejuHighlightLayer);
+  }
+
   function setTarget(name, { focus = true } = {}) {
     clearTimeout(state.pendingInputTimer);
     clearTimeout(state.startHandoffTimer);
@@ -1630,6 +1832,7 @@
       updateFlightStudy(name);
       highlightFlightGeography(name);
     }
+    if (activeMode === "jeju") updateJejuStudy(name);
     if (focus) setTimeout(() => focusCurrentStep(name), 0);
   }
 
@@ -1932,7 +2135,8 @@
       button.addEventListener("click", () => {
         const countInput = $("#stationCount");
         const next = Number(countInput.value || 20) + Number(button.dataset.delta);
-        countInput.value = Math.max(3, Math.min(50, next));
+      const maxCount = activeMode === "jeju" ? JEJU_ACTIVE_DATA.meta.stationCount : 50;
+      countInput.value = Math.max(3, Math.min(maxCount, next));
       });
     });
 
@@ -1961,7 +2165,8 @@
             label = `${origin.city} (${origin.code}) → ${destination.city} (${destination.code}) · ${route.length}개 영공`;
           }
         } else if (setupMode === "random") {
-          const count = Math.max(3, Math.min(50, Number($("#stationCount").value) || 20));
+    const maxCount = activeMode === "jeju" ? JEJU_ACTIVE_DATA.meta.stationCount : 50;
+    const count = Math.max(3, Math.min(maxCount, Number($("#stationCount").value) || 20));
           $("#stationCount").value = count;
           const startValue = $("#randomStart").value.trim();
           const start = startValue ? resolveStationInput(startValue) : null;
@@ -2016,6 +2221,10 @@
   );
 
   // 시작 화면에서는 수도권 전체 운영 구간을 보여주고, 여정 시작 뒤에는 현재 단계로 확대한다.
+  const jejuBounds = L.latLngBounds(
+    Object.values(JEJU_ACTIVE_DATA.stations).map((station) => [station.lat, station.lng])
+  );
+
   const metroBounds = L.latLngBounds(
     Object.values(SUBWAY_DATA.stations).map((station) => [station.lat, station.lng])
   );
